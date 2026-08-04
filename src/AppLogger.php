@@ -6,7 +6,7 @@ use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
 /**
- * Journalisation applicative — utilise l'API Monolog 1.x (addInfo/addError).
+ * Journalisation applicative — API Monolog 3.x (info/error).
  */
 class AppLogger
 {
@@ -20,11 +20,11 @@ class AppLogger
 
     public function factureEmise(int $totalTtc): void
     {
-        $this->logger->addInfo('Facture émise', ['total_ttc' => $totalTtc]);
+        $this->logger->info('Facture émise', ['total_ttc' => $totalTtc]);
     }
 
     public function erreurCalcul(string $message): void
     {
-        $this->logger->addError('Erreur de calcul', ['detail' => $message]);
+        $this->logger->error('Erreur de calcul', ['detail' => $message]);
     }
 }
