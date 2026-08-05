@@ -8,7 +8,7 @@ Le dépôt est une bibliothèque PHP sans couche réseau : pas d'exposition HTTP
 
 ## Résumé exécutif
 
-Aucun secret en dur, aucune donnée personnelle, aucune requête SQL, aucun appel réseau — la surface sécurité est très faible. Les risques observés sont de robustesse, pas d'intrusion. `InvoiceCalculator` accède directement à `$ligne['quantite']` et `$ligne['prixUnitaire']` sans garde (`src/InvoiceCalculator.php:21`), ce qui peut conduire à un comportement inattendu si une clé est absente (`HYPOTHÈSE` — le comportement runtime exact, warning ou résultat faussé, n'a pas été observé à l'exécution). Aucune valeur négative n'est rejetée — `VÉRIFIÉ_CODE` : aucune garde sur les négatifs n'est présente dans `src/InvoiceCalculator.php:17-31`. `AppLogger` instancie `StreamHandler` sans `try/catch` — `VÉRIFIÉ_CODE` : l'absence de bloc `try/catch` est observable dans `src/AppLogger.php:18` ; `HYPOTHÈSE` : si la destination est inaccessible, une exception pourrait remonter sans interception jusqu'à l'application hôte — comportement non observé à l'exécution. Ces défauts sont tous modérés dans un contexte bibliothèque où l'appelant est censé être maîtrisé, mais deviennent des risques réels si la bibliothèque est exposée à des données d'entrée moins contrôlées.
+Aucun secret en dur, aucune donnée personnelle, aucune requête SQL, aucun appel réseau — la surface sécurité est très faible. Les risques observés sont de robustesse, pas d'intrusion. **`InvoiceCalculator` accède aux clés avec garde en place (CLA-280, SHA b53b03e) : un `isset()` est appliqué avant l'accès, levant une `\InvalidArgumentException` si une clé est absente — RÉSOLU.** Aucune valeur négative n'est rejetée — `VÉRIFIÉ_CODE` : aucune garde sur les négatifs n'est présente dans `src/InvoiceCalculator.php:18-35`. `AppLogger` instancie `StreamHandler` sans `try/catch` — `VÉRIFIÉ_CODE` : l'absence de bloc `try/catch` est observable dans `src/AppLogger.php:18` ; `HYPOTHÈSE` : si la destination est inaccessible, une exception pourrait remonter sans interception jusqu'à l'application hôte — comportement non observé à l'exécution. Ces défauts restent modérés dans un contexte bibliothèque où l'appelant est censé être maîtrisé, mais le premier a été adressé.
 
 ## Constats détaillés
 
@@ -49,7 +49,7 @@ Aucun secret en dur, aucune donnée personnelle, aucune requête SQL, aucun appe
 
 ## Recommandations priorisées
 
-1. **Valider les clés et les valeurs dans `totalHorsTaxe`** — vérifier avec `isset()` ou des types stricts (`array{quantite: int, prixUnitaire: int}` PHP 8.x n'est pas nativement vérifiable, mais une fonction de validation peut être ajoutée) et lever une `\InvalidArgumentException` explicite sur une ligne malformée. Fichier : `src/InvoiceCalculator.php:19-22`.
+1. **[RÉALISÉ — CLA-280]** Valider les clés dans `totalHorsTaxe` — un garde `isset()` a été implémenté (SHA b53b03e) levant une `\InvalidArgumentException` explicite, couvert par quatre tests de validation (`tests/InvoiceCalculatorTest.php:34-60`). Pas d'action supplémentaire.
 2. **Entourer `new StreamHandler()` d'un `try/catch`** dans le constructeur d'`AppLogger` et retransmettre une exception applicative documentée, plutôt que de laisser remonter l'exception interne de Monolog. Fichier : `src/AppLogger.php:18`.
 3. **Documenter le comportement sur tableau vide et valeurs négatives** comme contrat de la bibliothèque — soit les accepter (avec test), soit les rejeter (avec validation + test). Fichier : `src/InvoiceCalculator.php`, `tests/InvoiceCalculatorTest.php`.
 

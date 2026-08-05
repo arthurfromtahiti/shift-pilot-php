@@ -4,7 +4,7 @@
 
 ## Compréhension globale
 
-La couverture de test est **partielle et non mesurée** : 3 cas de test PHPUnit couvrent le chemin nominal d'`InvoiceCalculator`, et `AppLogger` est totalement absent des tests. La configuration PHPUnit (`phpunit.xml`) n'active pas la collecte de couverture de code. L'absence de `composer.lock` rend les résultats de test non reproductibles entre environnements (Monolog peut varier dans la plage `^1.25`). Le projet est un pilote minimal et ses tests sont cohérents avec cette ambition — mais ils ne constituent pas un filet de sécurité suffisant pour une future évolution.
+La couverture de test comprend maintenant **sept cas de test PHPUnit** : trois nominaux (HT et TTC pour les deux taux) et quatre de validation des clés (CLA-280, SHA 3935220 et b53b03e). `AppLogger` est totalement absent des tests. La configuration PHPUnit (`phpunit.xml`) n'active pas la collecte de couverture de code. L'absence de `composer.lock` rend les résultats de test non reproductibles entre environnements (Monolog peut varier dans la plage `^1.25`). Le projet est un pilote minimal et ses tests sont cohérents avec cette ambition — mais ils ne constituent pas un filet de sécurité suffisant pour une future évolution.
 
 ## Résumé exécutif
 
@@ -65,7 +65,7 @@ Les trois premiers tests utilisent `assertSame` (comparaison stricte de type et 
 ## Recommandations priorisées
 
 1. **Ajouter un test pour `AppLogger`** — au minimum : vérifier que l'instanciation réussit avec les paramètres par défaut, et que `factureEmise`/`erreurCalcul` s'exécutent sans exception. Un `TestHandler` Monolog (présent dans certaines versions du package — à confirmer selon la version `^1.25` réellement installée) permettrait d'asserter le niveau et le contenu du message enregistré. Fichier à créer : `tests/AppLoggerTest.php`.
-2. **Ajouter des tests de cas limites pour `InvoiceCalculator`** — tableau vide, ligne avec clé manquante (tester que le comportement est documenté ou qu'une exception est levée), valeur négative. Fichier : `tests/InvoiceCalculatorTest.php`.
+2. **Ajouter un test pour tableau vide et valeurs négatives dans `InvoiceCalculator`** — cas limites non encore couverts : `totalHorsTaxe([])` (comportement métier ?), et ligne avec valeurs négatives (avec documentation ou rejet). Fichier : `tests/InvoiceCalculatorTest.php`.
 3. **Activer la collecte de couverture dans `phpunit.xml`** — ajouter `<coverage>` avec un rapport HTML ou Clover ; fixer un seuil minimum (ex. 80 % lignes). Fichier : `phpunit.xml`.
 4. **Versionner `composer.lock`** — garantit que CI et développeurs utilisent exactement les mêmes versions de Monolog et PHPUnit. Fichier à créer : `composer.lock` (généré par `composer install`).
 
