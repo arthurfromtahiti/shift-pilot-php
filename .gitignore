@@ -1,1 +1,28 @@
+# Dépendances
 /vendor/
+
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# PHPUnit
+.phpunit.result.cache
+/coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Outillage agent / CI local
+.claude/
+.paperclip_review_comment.md

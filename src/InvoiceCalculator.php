@@ -18,6 +18,9 @@ class InvoiceCalculator
     {
         $total = 0;
         foreach ($lignes as $ligne) {
+            if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+                throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+            }
             $total += $ligne['quantite'] * $ligne['prixUnitaire'];
         }
         return $total;
