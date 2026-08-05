@@ -22,8 +22,7 @@ write_channel: na_pilot       # pilote de test sans déploiement réel
 ```yaml
 git_coverage:
   source_code: true            # src/ versionné dans Git (observé)
-  composer_lock: true          # composer.lock présent sur feat/cla-16-generate-composer-lock
-                               # (non mergé en main au 2026-08-05)
+  composer_lock: false        # composer.lock absent du dépôt (observé)
   ci_cd: false                 # aucun .github/workflows/ détecté (observé)
 ```
 
