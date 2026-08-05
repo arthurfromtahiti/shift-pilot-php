@@ -13,6 +13,7 @@ class InvoiceCalculator
 
     /**
      * @param array<array{label: string, quantite: int, prixUnitaire: int}> $lignes prix en francs CFP
+     * @throws \InvalidArgumentException si une ligne est absente de "quantite" ou "prixUnitaire"
      */
     public function totalHorsTaxe(array $lignes): int
     {

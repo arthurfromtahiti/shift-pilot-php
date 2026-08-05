@@ -51,4 +51,11 @@ final class InvoiceCalculatorTest extends TestCase
         $calc = new InvoiceCalculator();
         $calc->totalTtc([['label' => 'Prestation', 'quantite' => 1]]);
     }
+
+    public function testTotalHorsTaxeLigneSansAucuneClésRequises(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $calc = new InvoiceCalculator();
+        $calc->totalHorsTaxe([['label' => 'Prestation']]);
+    }
 }
