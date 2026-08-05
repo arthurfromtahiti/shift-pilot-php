@@ -13,11 +13,15 @@ class InvoiceCalculator
 
     /**
      * @param array<array{label: string, quantite: int, prixUnitaire: int}> $lignes prix en francs CFP
+     * @throws \InvalidArgumentException si une ligne est absente de "quantite" ou "prixUnitaire"
      */
     public function totalHorsTaxe(array $lignes): int
     {
         $total = 0;
         foreach ($lignes as $ligne) {
+            if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+                throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+            }
             $total += $ligne['quantite'] * $ligne['prixUnitaire'];
         }
         return $total;
