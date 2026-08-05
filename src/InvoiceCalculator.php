@@ -23,10 +23,17 @@ class InvoiceCalculator
         return $total;
     }
 
-    public function totalTtc(array $lignes, bool $tauxReduit = false): int
+    /**
+     * @param array<array{label: string, quantite: int, prixUnitaire: int, taux?: float}> $lignes
+     *        Chaque ligne peut porter son propre taux TGC (clé "taux") ; défaut : TGC_STANDARD.
+     */
+    public function totalTtc(array $lignes): int
     {
-        $ht = $this->totalHorsTaxe($lignes);
-        $taux = $tauxReduit ? self::TGC_REDUIT : self::TGC_STANDARD;
-        return (int) round($ht * (1 + $taux));
+        $total = 0.0;
+        foreach ($lignes as $ligne) {
+            $taux = $ligne['taux'] ?? self::TGC_STANDARD;
+            $total += $ligne['quantite'] * $ligne['prixUnitaire'] * (1 + $taux);
+        }
+        return (int) round($total);
     }
 }
