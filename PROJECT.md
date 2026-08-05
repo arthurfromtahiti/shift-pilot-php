@@ -1,34 +1,29 @@
 # PROJECT.md — shift-pilot-php
 
-Contrat de maintenance SHIFT. Champs renseignés via l'interaction Paperclip CLA-182 (2026-08-04).
+Contrat de maintenance SHIFT. Champs initiaux renseignés via l'interaction Paperclip CLA-182 (2026-08-04). Champs `php_version` et `write_channel` mis à jour via interaction c8e9e753, répondue le 2026-08-05.
 
 ## Runtime
 
 ```yaml
-php_version: unknown          # réponse interaction : "Inconnue / à vérifier"
-php_version_source: unknown   # non fourni
+php_version: na_pilot         # pilote de test sans serveur de production réel
+                               # confirmé via interaction c8e9e753 (2026-08-05)
+php_version_source: user_confirmation_2026-08-05
 ```
-
-> **Action requise avant merge** : confirmer que PHP ≥ 8.1 tourne en production.
-> `monolog/monolog ^3.0` exige PHP ≥ 8.1 — si le serveur cible est encore sur PHP 8.0,
-> Composer refusera l'installation.
 
 ## Canal d'écriture Git → prod
 
 ```yaml
-write_channel: unknown        # réponse interaction : "Inconnu"
+write_channel: na_pilot       # pilote de test sans déploiement réel
+                               # confirmé via interaction c8e9e753 (2026-08-05)
 ```
-
-> **Action requise avant merge** : confirmer qu'un mécanisme de déploiement Git → prod existe
-> (CI/CD automatique ou déploiement manuel déclenché depuis ce dépôt).
 
 ## Couverture Git
 
 ```yaml
 git_coverage:
-  source_code: true           # src/ versionné dans Git (observé)
+  source_code: true            # src/ versionné dans Git (observé)
   composer_lock: false        # composer.lock absent du dépôt (observé)
-  ci_cd: false                # aucun .github/workflows/ détecté (observé)
+  ci_cd: false                 # aucun .github/workflows/ détecté (observé)
 ```
 
 ## Mises à jour autorisées
