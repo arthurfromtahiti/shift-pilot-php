@@ -8,22 +8,28 @@ La couverture de test est **partielle et non mesurée** : 3 cas de test PHPUnit 
 
 ## Résumé exécutif
 
-Trois tests couvrent les cas nominaux de l'unique fonction métier : HT avec deux lignes, TTC au taux standard, TTC au taux réduit. Ils sont corrects et leurs assertions sont vérifiées par le calcul (`25000 = 2×10000 + 1×5000`, `11600 = 10000 × 1.16`, `10500 = 10000 × 1.05`). La classe `AppLogger` — seul composant technique du projet — n'a aucun test dédié : ni test de construction, ni test de délégation aux méthodes Monolog, ni test du comportement sur flux inaccessible. Les cas limites d'`InvoiceCalculator` (tableau vide, clés manquantes, valeurs négatives, taux mixtes) ne sont pas testés. `phpunit.xml` n'est pas configuré pour générer un rapport de couverture (`coverage` non activé). L'absence de `composer.lock` expose les tests à des variations de comportement de Monolog dans la plage `^1.25`.
+Sept tests couvrent `InvoiceCalculator` : trois cas nominaux (HT avec deux lignes, TTC au taux standard, TTC au taux réduit) et quatre cas limites de validation des clés (ligne sans `prixUnitaire`, sans `quantite`, sans les deux clés, héritage via `totalTtc()`). Tous les tests sont corrects et leurs assertions vérifiées par le calcul (CLA-280, SHA 3935220 et b53b03e). La classe `AppLogger` — seul composant technique du projet — n'a aucun test dédié : ni test de construction, ni test de délégation aux méthodes Monolog, ni test du comportement sur flux inaccessible. Les cas limites d'`InvoiceCalculator` non encore testés : tableau vide, valeurs négatives (cette dernière étant un comportement à documenter). `phpunit.xml` n'est pas configuré pour générer un rapport de couverture (`coverage` non activé). L'absence de `composer.lock` expose les tests à des variations de comportement de Monolog dans la plage `^1.25`.
 
 ## Constats détaillés
 
-**Trois tests nominaux, tous corrects.** `VÉRIFIÉ_CODE` — `tests/InvoiceCalculatorTest.php` contient trois méthodes :
-- `testTotalHorsTaxe` : deux lignes (2×10000 + 1×5000), assertion `assertSame(25000, ...)` — calcul vérifié par arithmétique : `2×10000 + 1×5000 = 25000`. ✓
-- `testTotalTtcTauxStandard` : une ligne de 10000, assertion `assertSame(11600, ...)` — `(int) round(10000 × 1.16) = 11600`. ✓
-- `testTotalTtcTauxReduit` : une ligne de 10000, assertion `assertSame(10500, ...)` — `(int) round(10000 × 1.05) = 10500`. ✓
-Les trois tests utilisent `assertSame` (comparaison stricte de type et valeur) — choix correct pour des résultats de type `int`.
+**Sept tests, trois nominaux et quatre de validation, tous corrects.** `VÉRIFIÉ_CODE` (CLA-280, SHA 3935220 et b53b03e) — `tests/InvoiceCalculatorTest.php` contient sept méthodes :
+- **Cas nominaux** :
+  - `testTotalHorsTaxe` (l. 10) : deux lignes (2×10000 + 1×5000), assertion `assertSame(25000, ...)` — calcul vérifié : `2×10000 + 1×5000 = 25000`. ✓
+  - `testTotalTtcTauxStandard` (l. 20) : une ligne de 10000, assertion `assertSame(11600, ...)` — `(int) round(10000 × 1.16) = 11600`. ✓
+  - `testTotalTtcTauxReduit` (l. 27) : une ligne de 10000, assertion `assertSame(10500, ...)` — `(int) round(10000 × 1.05) = 10500`. ✓
+- **Cas limites (validation des clés)** :
+  - `testTotalHorsTaxeLigneSansPrixUnitaireLèveException` (l. 34) : ligne avec `quantite` mais sans `prixUnitaire` — `expectException(\InvalidArgumentException::class)`. ✓
+  - `testTotalHorsTaxeLigneSansQuantiteLèveException` (l. 41) : ligne avec `prixUnitaire` mais sans `quantite` — `expectException(\InvalidArgumentException::class)`. ✓
+  - `testTotalTtcLigneMalforméeLèveException` (l. 48) : `totalTtc()` appelé avec une ligne malformée — la guard est héritée via délégation à `totalHorsTaxe()`, `expectException(\InvalidArgumentException::class)`. ✓
+  - `testTotalHorsTaxeLigneSansAucuneClésRequises` (l. 55) : ligne avec aucune clé requise (double-clé-absente) — `expectException(\InvalidArgumentException::class)`. ✓
+
+Les trois premiers tests utilisent `assertSame` (comparaison stricte de type et valeur) — choix correct pour des résultats de type `int`. Les quatre cas limites utilisent `expectException` — choix correct pour valider le fail-fast.
 
 **`AppLogger` : zéro test.** `VÉRIFIÉ_CODE` — recherche sur `grep -r 'AppLogger' tests/` : aucune occurrence localisée dans `tests/InvoiceCalculatorTest.php` et aucun autre fichier de test dans le répertoire `tests/`. La classe `AppLogger` — incluant son constructeur, `factureEmise` et `erreurCalcul` — est totalement exclue de la suite de tests. Si l'API Monolog est migrée (`addInfo` → `info`), les tests n'intercepteront pas la régression.
 
-**Cas limites non couverts pour `InvoiceCalculator`.** `VÉRIFIÉ_CODE` — aucun des cas suivants n'est testé dans `tests/InvoiceCalculatorTest.php` :
+**Cas limites non couverts pour `InvoiceCalculator`.** `VÉRIFIÉ_CODE` — les cas de validation des clés sont maintenant couverts (CLA-280, SHA 3935220 et b53b03e ; voir Constats détaillés l. 34-60) ; les cas suivants restent non testés :
 - Tableau vide `[]` — comportement probable par lecture du code : la boucle ne s'exécute pas et retourne `0`, mais ce n'est pas prouvé par un test.
-- Clé manquante dans une ligne — `HYPOTHÈSE de comportement à l'exécution` : peut produire un `Warning` PHP et un calcul faussé ; non observé à l'exécution.
-- Valeur `quantite` ou `prixUnitaire` négative — `HYPOTHÈSE de comportement à l'exécution` : un HT négatif serait probablement retourné sans erreur ; non observé à l'exécution.
+- Valeur `quantite` ou `prixUnitaire` négative — `HYPOTHÈSE de comportement à l'exécution` : un HT négatif serait probablement retourné sans erreur ; non observé à l'exécution. À documenter ou à rejeter.
 - Ligne avec des types incorrects (ex. `prixUnitaire: "dix mille"`) — `HYPOTHÈSE de comportement à l'exécution` : erreur de type ou coercition selon le contexte PHP 8.x ; non observé.
 - Taux `$tauxReduit = true` combiné à des lignes mixtes — non applicable (limitation architecturale, pas un cas testable).
 
@@ -42,19 +48,19 @@ Les trois tests utilisent `assertSame` (comparaison stricte de type et valeur) �
 ## Dettes techniques
 
 - `VÉRIFIÉ_CODE` : `AppLogger` entièrement non testé — `tests/` ne contient aucun test pour cette classe.
-- `VÉRIFIÉ_CODE` : aucun test de cas limite sur `InvoiceCalculator` (tableau vide, clés manquantes, valeurs négatives).
+- `VÉRIFIÉ_CODE` : aucun test de cas limite restant sur `InvoiceCalculator` (tableau vide, valeurs négatives à documenter ou à rejeter) — les cas de clés manquantes sont maintenent couverts (CLA-280, SHA 3935220).
 - `VÉRIFIÉ_CODE` : pas de collecte de couverture dans `phpunit.xml` — la couverture réelle est inconnue.
 - `VÉRIFIÉ_CODE` : `composer.lock` absent — reproductibilité des tests non garantie.
 
 ## Zones critiques
 
-- **`tests/InvoiceCalculatorTest.php`** — unique fichier de test : toute évolution du projet qui n'ajoute pas de tests ici élargit une zone déjà non couverte. Un senior qui reprend le projet regarderait en premier ce fichier et constaterait que 100 % des tests testent un seul chemin nominal sur une seule classe.
+- **`tests/InvoiceCalculatorTest.php`** — unique fichier de test : toute évolution du projet qui n'ajoute pas de tests ici élargit une zone déjà non couverte. Le fichier contient maintenant 7 tests (3 nominaux + 4 de validation CLA-280), couvrant le chemin nominal et la guard d'entrée pour une seule classe. D'autres cas limites (tableau vide, négatifs) restent non testés.
 - **Absence totale de test `AppLogger`** — si la migration Monolog 2.x est réalisée, les tests actuels ne la valideront pas. La régression ne sera détectée qu'à l'exécution de l'application hôte.
 
 ## Risques
 
 - `VÉRIFIÉ_CODE` + `HYPOTHÈSE` : **régression Monolog non interceptée** — la migration `addInfo` → `info` dans `AppLogger` ne sera pas couverte par les tests actuels. Un test qui instancie `AppLogger` et vérifie qu'aucune exception n'est levée (voire qu'une entrée est écrite sur un handler en mémoire) est la seule façon d'attraper cette régression avant la production. Preuve : aucune occurrence d'`AppLogger` dans `tests/`.
-- `VÉRIFIÉ_CODE` + `HYPOTHÈSE` : **comportement non couvert sur clé manquante** — `VÉRIFIÉ_CODE` : aucun test dans `tests/InvoiceCalculatorTest.php` ne couvre le cas d'une ligne avec une clé absente, et la boucle accède directement à `quantite`/`prixUnitaire` sans garde (`src/InvoiceCalculator.php:21`). `HYPOTHÈSE` : un tel appel pourrait produire un total incorrect sans signal d'erreur explicite — le comportement runtime exact n'a pas été observé à l'exécution.
+- **Comportement sur clé manquante — RÉSOLU (CLA-280, SHA 3935220)** : quatre tests couvrent maintenant ce cas (`testTotalHorsTaxeLigneSansPrixUnitaireLèveException`, `testTotalHorsTaxeLigneSansQuantiteLèveException`, `testTotalTtcLigneMalforméeLèveException`, `testTotalHorsTaxeLigneSansAucuneClésRequises` dans `tests/InvoiceCalculatorTest.php:34-60`), et la guard `isset()` est en place dans `src/InvoiceCalculator.php:22`. Un appel avec clé absente lève désormais une `\InvalidArgumentException` explicite (fail-fast).
 
 ## Recommandations priorisées
 

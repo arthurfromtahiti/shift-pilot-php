@@ -12,7 +12,7 @@ Aucun secret en dur, aucune donnée personnelle, aucune requête SQL, aucun appe
 
 ## Constats détaillés
 
-**Accès aux clés de tableau sans garde.** `VÉRIFIÉ_CODE` — `src/InvoiceCalculator.php:21` : `$total += $ligne['quantite'] * $ligne['prixUnitaire']` sans vérification préalable de l'existence des clés (`isset` ou validation). L'unique protection existante est le docblock de `totalHorsTaxe` (`src/InvoiceCalculator.php:15`) qui documente la forme attendue, mais PHP n'applique pas les contraintes des docblocks à l'exécution. `HYPOTHÈSE` : en PHP 8.x, accéder à une clé inexistante d'un tableau ordinaire peut lever un `Warning: Undefined array key` et retourner `null`, ce qui pourrait produire une erreur de calcul silencieuse — le comportement exact n'a pas été observé à l'exécution.
+**Accès aux clés de tableau sans garde — RÉSOLU.** `VÉRIFIÉ_CODE` (CLA-280, SHA b53b03e) — `src/InvoiceCalculator.php:22` : un garde `isset($ligne['quantite'], $ligne['prixUnitaire'])` a été ajouté avant l'accès aux clés, levant une `\InvalidArgumentException` explicite si l'une est absente. Le PHPDoc de `totalHorsTaxe` a également été enrichi d'une annotation `@throws \InvalidArgumentException` (SHA 3935220). Les quatre cas limites sont maintenant testés dans `tests/InvoiceCalculatorTest.php:34-60` (`testTotalHorsTaxeLigneSansPrixUnitaireLèveException`, `testTotalHorsTaxeLigneSansQuantiteLèveException`, `testTotalTtcLigneMalforméeLèveException`, `testTotalHorsTaxeLigneSansAucuneClésRequises`).
 
 **Absence de validation des valeurs (quantités et prix négatifs).** `VÉRIFIÉ_CODE` — aucun test ni aucune garde dans `src/InvoiceCalculator.php:17-31` ne rejette une quantité ou un prix unitaire négatif. Une ligne `['label' => 'Avoir', 'quantite' => -1, 'prixUnitaire' => 10000]` produirait un HT de `-10000` sans erreur, puis un TTC négatif. Si ce cas doit représenter un avoir, il devrait être explicitement documenté comme comportement intentionnel ; s'il ne doit pas être possible, il devrait être rejeté.
 
@@ -34,19 +34,18 @@ Aucun secret en dur, aucune donnée personnelle, aucune requête SQL, aucun appe
 
 ## Dettes techniques
 
-- `VÉRIFIÉ_CODE` : accès `$ligne['quantite']`/`$ligne['prixUnitaire']` sans isset() ni validation (`src/InvoiceCalculator.php:21`). `HYPOTHÈSE` : une clé manquante pourrait conduire à un résultat de calcul incorrect — comportement runtime non observé à l'exécution.
-- `VÉRIFIÉ_CODE` : aucune validation des valeurs numériques (négatifs non rejetés) dans `src/InvoiceCalculator.php:17-31`.
-- `VÉRIFIÉ_CODE` : `StreamHandler` instancié sans `try/catch` (`src/AppLogger.php:18`) — `HYPOTHÈSE` : exception possible si le flux est inaccessible, non observé à l'exécution.
+- `VÉRIFIÉ_CODE` : aucune validation des valeurs numériques (négatifs non rejetés) dans `src/InvoiceCalculator.php:18-35`.
+- `VÉRIFIÉ_CODE` : `StreamHandler` instancié sans `try/catch` (`src/AppLogger.php:18`) — `HYPOTHÈSE` : exception possible si le flux est inaccessible, non observé à l'exécution. **Déporté en backlog CLA-297.**
 
 ## Zones critiques
 
-- **`src/InvoiceCalculator.php:19-22`** — boucle sur les lignes sans garde sur les clés ni rejet des valeurs négatives. `VÉRIFIÉ_CODE` : l'absence de validation est observable dans le source. `HYPOTHÈSE` : si la bibliothèque est un jour consommée par une couche recevant des données externes (API, form), cette zone pourrait devenir un point d'entrée de comportements inattendus — le comportement runtime exact n'a pas été observé.
-- **`src/AppLogger.php:15-18`** — constructeur avec chemin de fichier libre et sans gestion d'erreur. Un chemin arbitraire fourni par une configuration externe constituerait une écriture vers une destination non contrôlée.
+- **`src/InvoiceCalculator.php:21-26`** — boucle sur les lignes : garde en place pour les clés (SHA b53b03e), mais aucun rejet des valeurs négatives. `VÉRIFIÉ_CODE` : l'absence de validation pour les négatifs est observable dans le source. `HYPOTHÈSE` : si la bibliothèque est un jour consommée par une couche recevant des données externes (API, form) avec avoirs, cette zone devrait être documentée ou validée — le comportement runtime exact n'a pas été observé.
+- **`src/AppLogger.php:15-18`** — constructeur avec chemin de fichier libre et sans gestion d'erreur. Un chemin arbitraire fourni par une configuration externe constituerait une écriture vers une destination non contrôlée. **Déporté en backlog CLA-297.**
 
 ## Risques
 
-- `VÉRIFIÉ_CODE` : **absence de garde sur les clés de la ligne** (`src/InvoiceCalculator.php:21`) — accès direct à `quantite` et `prixUnitaire` sans `isset()`. `HYPOTHÈSE` : si une clé est absente, le comportement runtime (nature du signal, valeur produite) peut conduire à un résultat financier incorrect retourné à l'application hôte sans signal d'erreur explicite — non observé à l'exécution, aucun test de ce cas (`tests/InvoiceCalculatorTest.php`).
-- `HYPOTHÈSE` : **exception non interceptée à l'instanciation d'AppLogger** si le chemin passé en paramètre est invalide ou inaccessible. Impact : l'application hôte reçoit une exception non documentée au moment de la création du logger, pas du calcul. Preuve : `src/AppLogger.php:18` (absence de try/catch observable).
+- **Accès à clés manquantes — RÉSOLU (CLA-280, SHA b53b03e)** : la garde `isset()` est en place dans `src/InvoiceCalculator.php:22`, et quatre tests couvrent les cas limites (`tests/InvoiceCalculatorTest.php:34-60`). Une `\InvalidArgumentException` est levée immédiatement (fail-fast) plutôt que produire un total silencieusement faux.
+- `HYPOTHÈSE` : **exception non interceptée à l'instanciation d'AppLogger** si le chemin passé en paramètre est invalide ou inaccessible. Impact : l'application hôte reçoit une exception non documentée au moment de la création du logger, pas du calcul. Preuve : `src/AppLogger.php:18` (absence de try/catch observable). **Déporté en backlog CLA-297.**
 
 ## Recommandations priorisées
 
