@@ -48,7 +48,7 @@ Les trois premiers tests utilisent `assertSame` (comparaison stricte de type et 
 ## Dettes techniques
 
 - `VÉRIFIÉ_CODE` : `AppLogger` entièrement non testé — `tests/` ne contient aucun test pour cette classe.
-- `VÉRIFIÉ_CODE` : aucun test de cas limite restant sur `InvoiceCalculator` (tableau vide, valeurs négatives à documenter ou à rejeter) — les cas de clés manquantes sont maintenent couverts (CLA-280, SHA 3935220).
+- `VÉRIFIÉ_CODE` : aucun test de cas limite restant sur `InvoiceCalculator` (tableau vide, valeurs négatives à documenter ou à rejeter) — les cas de clés manquantes sont maintenant couverts (CLA-280, SHA 3935220 et b53b03e).
 - `VÉRIFIÉ_CODE` : pas de collecte de couverture dans `phpunit.xml` — la couverture réelle est inconnue.
 - `VÉRIFIÉ_CODE` : `composer.lock` absent — reproductibilité des tests non garantie.
 
