@@ -12,13 +12,13 @@ Il n'y a pas de couche de persistance à auditer : pas de base de données, pas 
 
 ## Constats détaillés
 
-**Absence totale de persistance.** `VÉRIFIÉ_CODE` — l'arbre `origin/main` ne contient aucun fichier ORM (Doctrine, Eloquent, ActiveRecord), aucune migration, aucun schéma SQL, aucun fichier `.env` de connexion. Les méthodes `totalHorsTaxe` et `totalTtc` calculent et retournent ; elles ne lisent ni n'écrivent en base (`src/InvoiceCalculator.php:17-31`). La carte des domaines confirme : `Dépend de la base : non` pour les deux domaines.
+**Absence totale de persistance.** `VÉRIFIÉ_CODE` — l'arbre `origin/main` ne contient aucun fichier ORM (Doctrine, Eloquent, ActiveRecord), aucune migration, aucun schéma SQL, aucun fichier `.env` de connexion. Les méthodes `totalHorsTaxe` et `totalTtc` calculent et retournent ; elles ne lisent ni n'écrivent en base (`src/InvoiceCalculator.php:18-47`). La carte des domaines confirme : `Dépend de la base : non` pour les deux domaines.
 
 **Ligne de facture = tableau associatif, sans type natif.** `VÉRIFIÉ_CODE` — la structure d'une ligne est documentée exclusivement par le docblock `@param array<array{label: string, quantite: int, prixUnitaire: int}>` (`src/InvoiceCalculator.php:15`). PHP n'enforces pas ce docblock à l'exécution : un appel avec `['qty' => 2, 'price' => 10000]` (clés anglaises par erreur) passerait sans erreur de type. `HYPOTHÈSE` : dans ce cas, la boucle accéderait à des clés absentes et pourrait produire un résultat faussé — le comportement runtime exact (valeur retournée, signal d'erreur) n'a pas été observé à l'exécution. Il n'existe pas de classe `LigneDeFacture` ou `InvoiceLine` qui encapsulerait cette structure et garantirait sa cohérence à la construction.
 
 **Constantes TGC comme données de référence.** `VÉRIFIÉ_CODE` — le dépôt encode deux constantes nommées `TGC_STANDARD = 0.16` et `TGC_REDUIT = 0.05` (`src/InvoiceCalculator.php:11-12`). Leur durcissement en constantes de classe est un choix défensif correct — toute évolution du taux nécessite une modification explicite du code, pas d'un fichier de config ou d'une entrée base non versionnée. `HYPOTHÈSE` (contexte externe, non sourcé dans le dépôt) : ces valeurs semblent correspondre aux taux de la TGC polynésienne — ce rattachement réglementaire ne peut être confirmé que par une source externe, pas par le seul code.
 
-**Règle monétaire : entiers, francs CFP.** `VÉRIFIÉ_CODE` — les types de retour sont `int` (`src/InvoiceCalculator.php:17,26`), le docblock de `totalHorsTaxe` mentionne explicitement `prix en francs CFP` (`src/InvoiceCalculator.php:15`), et les données de test utilisent des valeurs entières en francs CFP (`10000`, `5000`, `25000`, `11600`, `10500`). Cette règle (pas de centimes, pas de virgule) est donc documentée dans le code source, mais non enforced par le type système. Si un prix unitaire décimal était passé par erreur (ex. `prixUnitaire: 9999.5`), `HYPOTHÈSE` : PHP accepterait la valeur, la multiplication produirait un float, et le retour `int` de `totalHorsTaxe` pourrait entraîner une coercition silencieuse — le comportement exact (troncature, arrondi) n'a pas été observé à l'exécution.
+**Règle monétaire : entiers, francs CFP.** `VÉRIFIÉ_CODE` — les types de retour sont `int` (`src/InvoiceCalculator.php:18,35`), le docblock de `totalHorsTaxe` mentionne explicitement `prix en francs CFP` (`src/InvoiceCalculator.php:15`), et les données de test utilisent des valeurs entières en francs CFP (`10000`, `5000`, `25000`, `11600`, `10500`). Cette règle (pas de centimes, pas de virgule) est donc documentée dans le code source et renforcée par l'appel explicite à `(int) round()` (`src/InvoiceCalculator.php:27`) qui prévient la coercition silencieuse. Le comportement est déterministe : une multiplication flottante est explicitement arrondie avant le retour entier.
 
 **Taux de TGC unique par facture.** `VÉRIFIÉ_CODE` — le paramètre `bool $tauxReduit` (`src/InvoiceCalculator.php:26`) applique un taux unique à l'ensemble du total HT. La ligne de facture ne porte pas de taux individuel. `HYPOTHÈSE` : si des produits à taux différents coexistent dans la même facture, le modèle actuel ne peut pas les représenter correctement — il faudrait soit panacher en appelant séparément `totalTtc` pour chaque sous-ensemble, soit remodéliser la ligne pour inclure un champ `tauxReduit: bool`.
 
@@ -26,12 +26,13 @@ Il n'y a pas de couche de persistance à auditer : pas de base de données, pas 
 
 - `VÉRIFIÉ_CODE` : absence de couche de persistance — aucune migration à gérer, aucun schéma à synchroniser, aucun ORM à configurer. Simplicité maximale pour un pilote.
 - `VÉRIFIÉ_CODE` : les constantes de taux TGC sont localisées en un seul endroit (`src/InvoiceCalculator.php:11-12`) — un changement réglementaire se fait en une seule modification.
-- `VÉRIFIÉ_CODE` : les types de retour `int` (`src/InvoiceCalculator.php:17,26`) expriment explicitement la règle CFP (entiers), même si elle n'est pas défendue à l'entrée.
+- `VÉRIFIÉ_CODE` : l'arrondi explicite `(int) round()` est appliqué aux deux méthodes (`src/InvoiceCalculator.php:27,45`) — le retour entier est déterministe et sans coercition silencieuse.
+- `VÉRIFIÉ_CODE` : les types de retour `int` (`src/InvoiceCalculator.php:18,35`) expriment explicitement la règle CFP (entiers), même si elle n'est pas défendue à l'entrée.
 
 ## Dettes techniques
 
 - `VÉRIFIÉ_CODE` : absence de value object `LigneDeFacture` — la structure de données est implicite dans un docblock, non enforced par le type système PHP (`src/InvoiceCalculator.php:15`).
-- `HYPOTHÈSE` : règle monétaire (pas de centimes) non défendue à l'entrée — un `float` passé en `prixUnitaire` produirait une coercition silencieuse.
+- `HYPOTHÈSE` : règle monétaire (pas de centimes) non défendue à l'entrée — un `float` passé en `prixUnitaire` serait accepté et arrondi explicitement avant retour.
 - `VÉRIFIÉ_CODE` : modèle de taux unique par facture — limitation structurelle qui interdit les factures panachant taux standard et taux réduit (`src/InvoiceCalculator.php:26-30`).
 
 ## Zones critiques

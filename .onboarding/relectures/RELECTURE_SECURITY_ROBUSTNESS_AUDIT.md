@@ -5,7 +5,7 @@
 
 ## Problèmes bloquants
 
-- `.onboarding/audits/SECURITY_ROBUSTNESS_AUDIT.md:15` et `:48` présentent comme quasi-factuels "`Warning: Undefined array key`", "`null * null = 0`" et "continue ... sans exception". Depuis `src/InvoiceCalculator.php:21`, le seul fait prouvé est l'accès direct à deux clés sans validation. Le reste doit rester au rang d'`HYPOTHÈSE` tant que le comportement n'a pas été observé.
+- `.onboarding/audits/SECURITY_ROBUSTNESS_AUDIT.md:15` et `:48` présentent comme quasi-factuels "`Warning: Undefined array key`", "`null * null = 0`" et "continue ... sans exception". Depuis `src/InvoiceCalculator.php:22`, le seul fait prouvé est l'accès direct à deux clés sans validation. Le reste doit rester au rang d'`HYPOTHÈSE` tant que le comportement n'a pas été observé.
 - `.onboarding/audits/SECURITY_ROBUSTNESS_AUDIT.md:19` affirme en `VÉRIFIÉ_CODE` que la ligne `new StreamHandler($fichier)` "est exposée à une exception non interceptée". L'absence de `try/catch` est bien visible dans `src/AppLogger.php:15-18`; l'exception effective selon la destination reste hypothétique.
 
 ## Problèmes mineurs
@@ -15,7 +15,7 @@
 ## Points vérifiés et corrects
 
 - L'absence de secrets, d'appels réseau, de SQL et de rendu HTML est correctement corroborée par `rg --files .` puis la lecture de `src/`, `composer.json` et `phpunit.xml`.
-- L'absence de validation sur valeurs négatives dans `src/InvoiceCalculator.php:17-30` est bien observée.
+- L'absence de validation sur valeurs négatives dans `src/InvoiceCalculator.php:18-47` est bien observée.
 - Le passage libre de `$message` dans `src/AppLogger.php:26-28` est correctement distingué d'un risque d'exploitation seulement hypothétique.
 
 ## Recommandations de correction

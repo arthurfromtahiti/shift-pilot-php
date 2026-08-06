@@ -12,7 +12,7 @@ Le périmètre fonctionnel livré est **cohérent avec lui-même** : les méthod
 
 ## Constats détaillés
 
-**Cohérence calcul HT/TTC.** `VÉRIFIÉ_CODE` — `totalHorsTaxe` retourne la somme des `quantite × prixUnitaire` pour chaque ligne (`src/InvoiceCalculator.php:19-23`) ; `totalTtc` appelle `totalHorsTaxe` puis applique le taux sélectionné via `(int) round($ht * (1 + $taux))` (`src/InvoiceCalculator.php:28-30`). Les trois tests valident ce calcul (`25000`, `11600`, `10500`) et les résultats sont arithmétiquement corrects. Aucune incohérence entre l'implémentation et son intention déclarée.
+**Cohérence calcul HT/TTC.** `VÉRIFIÉ_CODE` — `totalHorsTaxe` retourne la somme des `quantite × prixUnitaire` pour chaque ligne, protégée par `(int) round()` (`src/InvoiceCalculator.php:21-27`) ; `totalTtc` applique le même processus avec le taux sélectionné via `(int) round($ht * (1 + $taux))` (`src/InvoiceCalculator.php:38-45`). Les deux méthodes appliquent désormais la même garde d'arrondi. Les trois tests valident ce calcul (`25000`, `11600`, `10500`) et les résultats sont arithmétiquement corrects. Aucune incohérence entre l'implémentation et son intention déclarée.
 
 **Taux TGC codés en constantes.** `VÉRIFIÉ_CODE` — le dépôt encode `TGC_STANDARD = 0.16` (16 %) et `TGC_REDUIT = 0.05` (5 %) (`src/InvoiceCalculator.php:11-12`). Leur codage en constantes de classe garantit une source de vérité unique et visible. `HYPOTHÈSE` (contexte externe, non sourcé dans le dépôt) : ces valeurs sembleraient correspondre aux taux de la TGC polynésienne — le rattachement réglementaire exact (décret, date d'entrée en vigueur) ne peut pas être établi depuis le seul code. `HYPOTHÈSE` : si ces taux étaient modifiés réglementairement, la modification du code serait nécessaire — aucune configuration externe ne permet de les surcharger.
 
@@ -22,9 +22,9 @@ Le périmètre fonctionnel livré est **cohérent avec lui-même** : les méthod
 
 **Pas de génération de document, pas de persistance.** `VÉRIFIÉ_CODE` — `InvoiceCalculator` ne génère ni PDF, ni JSON, ni structure de facture persistée. Il calcule et retourne des entiers. C'est cohérent avec la description « bibliothèque de calcul » du README, mais le terme « facturation » dans le nom du projet peut créer une attente fonctionnelle plus large chez un utilisateur non averti.
 
-**Mode d'arrondi : comportement par défaut non documenté.** `VÉRIFIÉ_CODE` — `round()` est appelé sans second argument (mode explicite) dans `src/InvoiceCalculator.php:30`. `HYPOTHÈSE` (contexte langage, non observable depuis le seul dépôt) : PHP utiliserait `PHP_ROUND_HALF_UP` par défaut. La règle d'arrondi applicable à la TGC polynésienne n'est pas documentée dans le dépôt. `HYPOTHÈSE` : si la règle fiscale requiert un mode différent pour certaines valeurs limites, le résultat serait fonctionnellement incorrect sur ces cas.
+**Mode d'arrondi : comportement par défaut non documenté.** `VÉRIFIÉ_CODE` — `round()` est appelé sans second argument (mode explicite) dans `src/InvoiceCalculator.php:27` et `src/InvoiceCalculator.php:45`. `HYPOTHÈSE` (contexte langage, non observable depuis le seul dépôt) : PHP utiliserait `PHP_ROUND_HALF_UP` par défaut. La règle d'arrondi applicable à la TGC polynésienne n'est pas documentée dans le dépôt. `HYPOTHÈSE` : si la règle fiscale requiert un mode différent pour certaines valeurs limites, le résultat serait fonctionnellement incorrect sur ces cas.
 
-**Comportement sur tableau vide.** `VÉRIFIÉ_CODE` — `totalHorsTaxe([])` retourne `0` (la boucle ne s'exécute pas) ; `totalTtc([])` retourne `0` (applique le taux à 0, `(int) round(0) = 0`). Ce comportement est techniquement cohérent mais n'est pas documenté comme cas métier attendu. `HYPOTHÈSE` : une facture vide devrait peut-être lever une erreur fonctionnelle plutôt que retourner 0 F CFP, selon les règles métier.
+**Comportement sur tableau vide.** `VÉRIFIÉ_CODE` — `totalHorsTaxe([])` retourne `0` (la boucle ne s'exécute pas, `(int) round(0) = 0`) ; `totalTtc([])` retourne `0` (applique le taux à 0, `(int) round(0) = 0`). Ce comportement est techniquement cohérent mais n'est pas documenté comme cas métier attendu. `HYPOTHÈSE` : une facture vide devrait peut-être lever une erreur fonctionnelle plutôt que retourner 0 F CFP, selon les règles métier.
 
 ## Forces
 
@@ -53,7 +53,7 @@ Le périmètre fonctionnel livré est **cohérent avec lui-même** : les méthod
 1. **Documenter les limitations fonctionnelles dans le README** — en particulier : taux unique par facture, pas de remise par ligne, pas d'avoir, pas de génération de document. Cela définit un contrat fonctionnel explicite pour les consommateurs. Fichier : `README.md`.
 2. **Ajouter un exemple d'utilisation** dans le README ou un fichier dédié (`examples/`) montrant le flux complet : construction de lignes, appel `totalTtc`, appel `factureEmise`. C'est la documentation minimale pour un composant bibliothèque. Fichier : `README.md` ou `examples/usage.php`.
 3. **Clarifier le comportement sur tableau vide et valeurs négatives** — soit documenter comme cas licite (0 F CFP retourné), soit lever une `\InvalidArgumentException` documentée. Fichier : `src/InvoiceCalculator.php`, `README.md`.
-4. **Documenter le mode d'arrondi** — référencer la règle réglementaire CFP applicable, ou noter que `PHP_ROUND_HALF_UP` est utilisé par défaut faute de spécification. Fichier : `src/InvoiceCalculator.php:30` (commentaire).
+4. **Documenter le mode d'arrondi** — référencer la règle réglementaire CFP applicable, ou noter que `PHP_ROUND_HALF_UP` est utilisé par défaut faute de spécification. Fichier : `src/InvoiceCalculator.php:27,45` (appels `(int) round()`).
 
 ## Questions ouvertes
 
