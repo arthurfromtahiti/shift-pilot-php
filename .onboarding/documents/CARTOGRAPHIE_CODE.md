@@ -95,7 +95,7 @@ Calcul du montant HT/TTC d'une facture selon les règles TGC.
 
 **Exceptions levées** :
 - `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 23)
-- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 29-31)
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 29-30)
 
 **Implémentation** : lignes 21-33
 ```php
@@ -115,7 +115,7 @@ return (int) $rounded;
 
 **Points critiques** :
 - Valide la présence des clés `quantite` et `prixUnitaire` avant de les accéder (ligne 23)
-- Vérifie le débordement après arrondi avant de retourner (lignes 29-31)
+- Vérifie le débordement après arrondi avant de retourner (lignes 29-30)
 - Pas de typehint sur le contenu des lignes (pas de vérification à la compilation)
 
 **Test couvrant** : `testTotalHorsTaxe` — 2 lignes, résultat 25000 ✓
@@ -130,7 +130,7 @@ return (int) $rounded;
 
 **Exceptions levées** :
 - `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 45)
-- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 52-54)
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 52-53)
 
 **Implémentation** : lignes 43-56
 ```php
@@ -154,7 +154,7 @@ return (int) $rounded;
 - Accumulateur en `float` pour laisser la précision intermédiaire (ligne 43)
 - Support de taux par ligne via la clé optionnelle `taux` (ligne 48) — défaut : `TGC_STANDARD`
 - Arrondit une seule fois, après la somme totale (ligne 51)
-- Vérifie le débordement avant de retourner (lignes 52-55)
+- Vérifie le débordement avant de retourner (lignes 52-53)
 
 **Tests couvrant** :
 - `testTotalTtcTauxStandard` (ligne 20) : HT=10000, taux=16 %, résultat 11600 ✓
@@ -170,7 +170,7 @@ Aucune — classe autonome, zéro dépendance Composer.
 |---|---|---|---|
 | Tableau vide retourne 0 | lignes 21-32 | Faible | Documenter le comportement ou le rejeter |
 | Valeur négative non rejetée | ligne 26 | Faible | Documenter ou valider |
-| Débordement d'entier | lignes 29-31, 52-54 | Élevé | ✅ Levée d'exception `OverflowException` (résolu en fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426) |
+| Débordement d'entier | lignes 29-30, 52-53 | Élevé | ✅ Levée d'exception `OverflowException` (résolu en fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426) |
 
 ---
 
