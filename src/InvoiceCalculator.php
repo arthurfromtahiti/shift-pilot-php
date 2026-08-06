@@ -30,11 +30,15 @@ class InvoiceCalculator
     /**
      * @param array<array{label: string, quantite: int, prixUnitaire: int, taux?: float}> $lignes
      *        Chaque ligne peut porter son propre taux TGC (clé "taux") ; défaut : TGC_STANDARD.
+     * @throws \InvalidArgumentException si une ligne est absente de "quantite" ou "prixUnitaire"
      */
     public function totalTtc(array $lignes): int
     {
         $total = 0.0;
         foreach ($lignes as $ligne) {
+            if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+                throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+            }
             $taux = $ligne['taux'] ?? self::TGC_STANDARD;
             $total += $ligne['quantite'] * $ligne['prixUnitaire'] * (1 + $taux);
         }
