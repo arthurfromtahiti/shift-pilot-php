@@ -6,7 +6,7 @@
 
 ```
 src/
-├── InvoiceCalculator.php  [32 lignes]   Unique classe métier — calcul HT/TTC
+├── InvoiceCalculator.php  [57 lignes]   Unique classe métier — calcul HT/TTC
 └── AppLogger.php          [30 lignes]   Adaptateur technique Monolog 1.x
 ```
 
@@ -24,10 +24,10 @@ src/
 
 ```
 tests/
-└── InvoiceCalculatorTest.php  [31 lignes]   3 tests PHPUnit nominaux
+└── InvoiceCalculatorTest.php  [102 lignes]   10 tests PHPUnit (nominaux + limites)
 ```
 
-**Total** : 7 fichiers versionnés ; 2 classes PHP ; 3 tests exécutables.
+**Total** : 7 fichiers versionnés ; 2 classes PHP ; 10 tests exécutables.
 
 ---
 
@@ -47,7 +47,7 @@ tests/
 │ const TGC_STANDARD=0.16  │              │ __construct(canal, fichier)│
 │ const TGC_REDUIT=0.05    │              │ factureEmise(totalTtc)    │
 │ totalHorsTaxe(lignes)    │              │ erreurCalcul(message)    │
-│ totalTtc(lignes, taux)   │              │ wraps: Monolog\Logger    │
+│ totalTtc(lignes)         │              │ wraps: Monolog\Logger    │
 └──────────────────────────┘              └──────────────────────────┘
      │                                            │
      │ (aucune dépendance)                        │ depends on:
@@ -359,13 +359,13 @@ Application hôte
    │      └─→ Σ(quantité × prixUnitaire)
    │           └─→ retourne int
    │
-   ├─→ $calc->totalTtc($lignes, false)
+   ├─→ $calc->totalTtc($lignes)
    │      │
-   │      ├─→ appelle totalHorsTaxe($lignes) → HT
+   │      ├─→ pour chaque ligne, lit taux optionnel (défaut : TGC_STANDARD)
    │      │
-   │      ├─→ sélectionne taux (TGC_STANDARD = 0.16)
+   │      ├─→ accumule ligne × (1 + taux)
    │      │
-   │      └─→ (int) round(HT × 1.16) → retourne int
+   │      └─→ (int) round(total) → retourne int
    │
    └─→ new AppLogger('facturation', 'php://stderr')
           │

@@ -47,7 +47,7 @@ Ces cas sont validés par la suite de tests existante. **Devant tous passer au v
 
 1. Exécuter la suite : `composer test`
 2. Localiser le test `testTotalHorsTaxe` dans la sortie
-3. Vérifier la ligne de test : `testTotalHorsTaxe` (ligne 16)
+3. Vérifier la ligne de test : `testTotalHorsTaxe` (ligne 10)
 
 **Assertions attendues** :
 ```php
@@ -64,7 +64,7 @@ $this->assertSame(25000, $calc->totalHorsTaxe([
 - ✅ Assertion `assertSame(25000, ...)` ne lève pas d'exception
 - ✅ Durée de test < 1 seconde
 
-**Preuve** : `tests/InvoiceCalculatorTest.php:16`
+**Preuve** : `tests/InvoiceCalculatorTest.php:10`
 
 **Confiance** : **high** (testé, nominal)
 
@@ -83,7 +83,7 @@ $this->assertSame(25000, $calc->totalHorsTaxe([
 ```php
 // HT=10000 F CFP, taux=16 % → TTC = 10000 × 1.16 = 11600 F CFP
 $this->assertSame(11600, $calc->totalTtc([
-    ['label' => 'Produit', 'quantite' => 1, 'prixUnitaire' => 10000],
+    ['label' => 'Produit', 'quantite' => 1, 'prixUnitaire' => 10000, 'taux' => InvoiceCalculator::TGC_STANDARD],
 ]));
 ```
 
@@ -93,7 +93,7 @@ $this->assertSame(11600, $calc->totalTtc([
 - ✅ Test `testTotalTtcTauxStandard` passe
 - ✅ Assertion `assertSame(11600, ...)` exacte (pas d'écart ±1)
 
-**Preuve** : `tests/InvoiceCalculatorTest.php:24`
+**Preuve** : `tests/InvoiceCalculatorTest.php:20`
 
 **Confiance** : **high** (testé, nominal)
 
@@ -112,8 +112,8 @@ $this->assertSame(11600, $calc->totalTtc([
 ```php
 // HT=10000 F CFP, taux=5 % → TTC = 10000 × 1.05 = 10500 F CFP
 $this->assertSame(10500, $calc->totalTtc([
-    ['label' => 'Produit première nécessité', 'quantite' => 1, 'prixUnitaire' => 10000],
-], true));  // $tauxReduit = true
+    ['label' => 'Produit première nécessité', 'quantite' => 1, 'prixUnitaire' => 10000, 'taux' => InvoiceCalculator::TGC_REDUIT],
+]));
 ```
 
 **Calcul justifié** : `(int) round(10000 × 1.05) = 10500`
@@ -122,7 +122,7 @@ $this->assertSame(10500, $calc->totalTtc([
 - ✅ Test `testTotalTtcTauxReduit` passe
 - ✅ Assertion `assertSame(10500, ...)` exacte
 
-**Preuve** : `tests/InvoiceCalculatorTest.php:31`
+**Preuve** : `tests/InvoiceCalculatorTest.php:27`
 
 **Confiance** : **high** (testé, nominal)
 
@@ -225,12 +225,12 @@ $calc->totalHorsTaxe([
 **Sortie attendue** :
 ```
 PHPUnit 11.x.x ...
-Tests: 5, Assertions: 5+, OK.
+Tests: 10, Assertions: 10+, OK.
 ```
 
 **Critères de recette** :
 - ✅ Exit code = 0 (succès)
-- ✅ 5+ tests exécutés (nominaux + limites)
+- ✅ 10 tests exécutés (nominaux + exceptions + cas limites)
 - ✅ 0 erreurs, 0 failures
 
 **Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap
