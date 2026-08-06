@@ -86,13 +86,17 @@ final class InvoiceCalculatorTest extends TestCase
         $calc->totalHorsTaxe([['label' => 'Prestation']]);
     }
 
-    public function testTotalHorsTaxeNeJettePasDeTypeErrorSurOverflow(): void
+    public function testTotalHorsTaxeLèveOverflowExceptionSiDépassementPhpIntMax(): void
     {
+        $this->expectException(\OverflowException::class);
         $calc = new InvoiceCalculator();
-        // PHP_INT_MAX * 2 depasse PHP_INT_MAX : PHP promeut $total en float.
-        // Sans le cast (int) round(...), return $total provoquerait un TypeError.
-        $lignes = [['label' => 'Overflow', 'quantite' => PHP_INT_MAX, 'prixUnitaire' => 2]];
-        $result = $calc->totalHorsTaxe($lignes);
-        $this->assertIsInt($result);
+        $calc->totalHorsTaxe([['label' => 'Overflow', 'quantite' => PHP_INT_MAX, 'prixUnitaire' => 2]]);
+    }
+
+    public function testTotalTtcLèveOverflowExceptionSiDépassementPhpIntMax(): void
+    {
+        $this->expectException(\OverflowException::class);
+        $calc = new InvoiceCalculator();
+        $calc->totalTtc([['label' => 'Overflow', 'quantite' => 100000000000, 'prixUnitaire' => 100000000000]]);
     }
 }
