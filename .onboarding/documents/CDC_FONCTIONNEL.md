@@ -19,7 +19,6 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 - Enregistrer les événements de facturation sur un logger configuré
 
 **Limitations** :
-- Ne peut pas calculer une facture mixte (lignes à 16 % et lignes à 5 % dans le même appel)
 - Ne peut pas remplacer le logger Monolog sans modifier la classe `AppLogger`
 - Ne peut pas accéder aux entités persistées (aucune persistance dans ce dépôt)
 
