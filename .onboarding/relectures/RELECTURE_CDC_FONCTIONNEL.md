@@ -16,7 +16,7 @@
 
 ## Points vérifiés et corrects
 - L'objectif général de bibliothèque de calcul TGC sans HTTP ni persistance est correctement traçable à `.onboarding/domaines/CARTE_DES_DOMAINES.md`, `README.md` et `composer.json`.
-- Les signatures `totalHorsTaxe` et `totalTtc`, le taux standard par défaut et l'arrondi via `round()` sont fidèlement repris du code (`src/InvoiceCalculator.php:17-30`).
+- Les signatures `totalHorsTaxe` et `totalTtc`, le taux standard par défaut et l'arrondi via `(int) round()` sont fidèlement repris du code (`src/InvoiceCalculator.php:18-47`).
 - La limitation `un seul taux par facture` est bien tirée de la signature `bool $tauxReduit`, déjà pointée dans le workflow calcul.
 
 ## Recommandations de correction

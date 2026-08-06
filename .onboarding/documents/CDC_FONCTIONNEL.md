@@ -104,14 +104,14 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Énoncé** : une ligne de facture contient au minimum une quantité et un prix unitaire
 - **Format** : tableau associatif PHP avec au minimum les clés `quantite: int, prixUnitaire: int` ; la clé `label` est optionnelle et ignorée
 - **Validation** : aucune — accès direct aux clés `quantite` et `prixUnitaire` sans garde
-- **Preuve** : `src/InvoiceCalculator.php:19-22` n'accède qu'à `quantite` et `prixUnitaire`
+- **Preuve** : `src/InvoiceCalculator.php:21-26` n'accède qu'à `quantite` et `prixUnitaire`
 - **Impact sur dev** : l'appelant doit garantir que chaque ligne a au minimum les clés `quantite` et `prixUnitaire`
 
 #### R2 — Montant hors taxe (HT)
 - **Énoncé** : le montant HT d'une facture est la somme des produits quantité × prix unitaire pour chaque ligne
 - **Formule** : `HT = Σ(quantite × prixUnitaire)`
 - **Unité** : francs CFP entiers
-- **Preuve** : `src/InvoiceCalculator.php:19-22`, test `testTotalHorsTaxe` = 25000
+- **Preuve** : `src/InvoiceCalculator.php:21-26`, test `testTotalHorsTaxe` = 25000
 - **Impact sur dev** : aucune remise, aucune ristourne ne s'applique au niveau ligne — c'est une addition pure
 
 #### R3 — Taux TGC standard
@@ -132,7 +132,7 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Énoncé** : le montant TTC est calculé en appliquant le taux TGC au HT, puis en arrondissant au franc CFP entier
 - **Formule** : `TTC = (int) round(HT × (1 + taux_TGC))`
 - **Mode d'arrondi** : `PHP_ROUND_HALF_UP` (défaut PHP sans argument explicite)
-- **Preuve** : `src/InvoiceCalculator.php:30`
+- **Preuve** : `src/InvoiceCalculator.php:27,45`
 - **Exemple** : HT=10000 F CFP, taux=16 % → `10000 × 1.16 = 11600 F CFP` exact (test `testTotalTtcTauxStandard`)
 - **Exemple** : HT=10000 F CFP, taux=5 % → `10000 × 1.05 = 10500 F CFP` exact (test `testTotalTtcTauxReduit`)
 - **HYPOTHÈSE de conformité** : le mode d'arrondi PHP par défaut est conforme à la réglementation TGC CFP (non sourcé dans le dépôt)
@@ -141,7 +141,7 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Énoncé** : une facture ne peut appliquer qu'un seul taux TGC (standard ou réduit) — impossible de panacher sur la même facture
 - **Implémentation** : paramètre booléen unique `bool $tauxReduit`, appliqué à tout le total HT
 - **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) doit être segmentée et calculée en deux appels
-- **Preuve** : `src/InvoiceCalculator.php:26-27` (signature)
+- **Preuve** : `src/InvoiceCalculator.php:35` (signature `totalTtc`)
 - **État** : c'est une limitation d'API, appropriée au scope pilote ; à clarifier pour une évolution production
 
 #### R7 — Pas de remise, pas d'avoir
@@ -216,7 +216,7 @@ Ces constantes sont l'**unique point source de vérité** pour les deux taux uti
 
 **Comportement** : la boucle ne s'exécute pas, l'accumulateur reste 0.
 
-**Preuve** : logique de `src/InvoiceCalculator.php:19-22`
+**Preuve** : logique de `src/InvoiceCalculator.php:21-26`
 
 **Ambiguïté métier** : une facture sans lignes est-elle un cas valide (0 F CFP) ou une erreur à signaler ? Non documenté.
 
@@ -230,7 +230,7 @@ Ces constantes sont l'**unique point source de vérité** pour les deux taux uti
 
 **Conséquence** : le calcul produit un résultat incorrect (HT inférieur au réel) sans signal d'erreur explicite.
 
-**Preuve** : aucun test ne couvre ce cas ; `src/InvoiceCalculator.php:21` accède directement sans validation
+**Preuve** : aucun test ne couvre ce cas ; `src/InvoiceCalculator.php:22` accède directement sans validation
 
 **État** : `HYPOTHÈSE` — ce comportement runtime n'a pas été observé à l'exécution dans ce run.
 

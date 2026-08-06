@@ -311,9 +311,9 @@ Déclaré en `composer.json:6` : `"php": ">=8.0"`
 
 | Chemin | Critique pour | Localisation | Points d'attention |
 |---|---|---|---|
-| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:19-22` | Pas de validation de clés |
-| Sélection de taux | TTC au taux correct | `src/InvoiceCalculator.php:29` | Booléen unique, pas de taux mixte |
-| Arrondi final | Exactitude du TTC | `src/InvoiceCalculator.php:30` | `round()` sans mode explicite |
+| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:21-26` | Pas de validation de clés |
+| Sélection de taux | TTC au taux correct | `src/InvoiceCalculator.php:42` | Booléen unique, pas de taux mixte |
+| Arrondi final | Exactitude du TTC | `src/InvoiceCalculator.php:27,45` | `(int) round()` explicite |
 | Construction du logger | Journalisation | `src/AppLogger.php:17-18` | Instanciation directe Monolog |
 | API `addInfo`/`addError` | Événements enregistrés | `src/AppLogger.php:23,28` | Monolog 1.x seulement |
 

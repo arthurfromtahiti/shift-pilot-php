@@ -9,13 +9,13 @@
 
 ## Problèmes mineurs
 
-- `.onboarding/audits/FUNCTIONAL_AUDIT.md:25` tire `PHP_ROUND_HALF_UP` de l'appel `round()` sans deuxième argument. L'observation solide est que le mode n'est pas explicité dans `src/InvoiceCalculator.php:30`; la règle exacte relève d'un contexte langage, pas du dépôt.
+- Les appels à `round()` sans deuxième argument se trouvent maintenant dans `src/InvoiceCalculator.php:27` et `45`. L'observation solide est que le mode n'est pas explicité; la règle exacte relève d'un contexte langage, pas du dépôt.
 
 ## Points vérifiés et corrects
 
-- La limitation "taux unique par facture" est correctement déduite de `src/InvoiceCalculator.php:25-29`.
+- La limitation "taux unique par facture" est correctement déduite de la signature de `totalTtc()` (ligne 35).
 - L'absence d'intégration visible entre `InvoiceCalculator` et `AppLogger` est correctement établie par l'inventaire des fichiers du dépôt et la lecture de `src/` et `tests/`.
-- Le comportement sur tableau vide est correctement inféré du code en restant local : boucle vide puis `round(0)` dans `src/InvoiceCalculator.php:17-30`.
+- Le comportement sur tableau vide est correctement inféré du code en restant local : boucle vide puis `(int) round(0)` dans `src/InvoiceCalculator.php:27,45`.
 
 ## Recommandations de correction
 

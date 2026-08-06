@@ -23,16 +23,16 @@ Permettre à une application PHP de calculer le **total hors taxe** puis le **to
 
 ## Étapes principales
 1. **Constitution de la liste de lignes** : l'appelant bâtit un tableau `$lignes` ; chaque entrée a la forme `{label: string, quantite: int, prixUnitaire: int}` (docblock `src/InvoiceCalculator.php:15`).
-2. **Calcul du total HT** : `totalHorsTaxe` itère les lignes et accumule `$ligne['quantite'] * $ligne['prixUnitaire']` (`src/InvoiceCalculator.php:19-22`). Retourne un `int`.
-3. **Choix du taux TGC** : `totalTtc` sélectionne `TGC_REDUIT = 0.05` si `$tauxReduit === true`, sinon `TGC_STANDARD = 0.16` (`src/InvoiceCalculator.php:29`).
-4. **Calcul du total TTC et arrondi** : `(int) round($ht * (1 + $taux))` (`src/InvoiceCalculator.php:30`). Résultat : `int` en francs CFP.
+2. **Calcul du total HT** : `totalHorsTaxe` itère les lignes et accumule `$ligne['quantite'] * $ligne['prixUnitaire']` (`src/InvoiceCalculator.php:21-26`), puis retourne `(int) round($total)` (`src/InvoiceCalculator.php:27`).
+3. **Choix du taux TGC** : `totalTtc` sélectionne `TGC_REDUIT = 0.05` si `$tauxReduit === true`, sinon `TGC_STANDARD = 0.16` (`src/InvoiceCalculator.php:42`).
+4. **Calcul du total TTC et arrondi** : `(int) round($ht * (1 + $taux))` (`src/InvoiceCalculator.php:45`). Résultat : `int` en francs CFP.
 
 ## Règles métier
-- **Ligne = quantité × prix unitaire** : `$ligne['quantite'] * $ligne['prixUnitaire']` (`src/InvoiceCalculator.php:21`). Pas de ristourne ni de remise au niveau ligne.
+- **Ligne = quantité × prix unitaire** : `$ligne['quantite'] * $ligne['prixUnitaire']` (`src/InvoiceCalculator.php:22`). Pas de ristourne ni de remise au niveau ligne.
 - **Deux taux de TGC seulement** : standard 16 % (`TGC_STANDARD = 0.16`, `src/InvoiceCalculator.php:11`) et réduit 5 % (`TGC_REDUIT = 0.05`, `src/InvoiceCalculator.php:12`). Pas de taux zéro, pas de taux personnalisé.
 - **Taux unique par facture** : le paramètre `$tauxReduit` s'applique à l'ensemble du total HT ; une facture ne peut pas panacher taux standard et taux réduit sur des lignes différentes.
-- **Taux standard par défaut** : `bool $tauxReduit = false` (`src/InvoiceCalculator.php:27`) — si non précisé, le taux standard s'applique.
-- **Arrondi au franc CFP** : `(int) round(...)` (`src/InvoiceCalculator.php:30`). `round()` est appelé sans mode d'arrondi explicite (aucun second argument dans le code).
+- **Taux standard par défaut** : `bool $tauxReduit = false` (signature ligne 35) — si non précisé, le taux standard s'applique.
+- **Arrondi au franc CFP** : `(int) round(...)` appliqué explicitement dans `totalHorsTaxe` (ligne 27) et `totalTtc` (ligne 45).
 - **Pas de sous-unité** : prix unitaires et quantités sont des entiers (`int`), confirmé par les cas de test (10000 F CFP, 5000 F CFP, quantités 1 et 2).
 
 ## Données
@@ -46,7 +46,7 @@ Permettre à une application PHP de calculer le **total hors taxe** puis le **to
 Aucune intégration externe explicite visible. Bibliothèque pure : pas d'appel réseau, pas de base de données, pas de fichier.
 
 ## Risques
-- **Clés manquantes dans une ligne** : accès directs `$ligne['quantite']` et `$ligne['prixUnitaire']` sans garde ni validation dans la boucle (`src/InvoiceCalculator.php:21`). Aucun test ne couvre ce cas (`tests/InvoiceCalculatorTest.php`). `HYPOTHÈSE` : le comportement runtime en cas de clé absente (avertissement, résultat inattendu, autre) n'est pas documenté dans le dépôt et n'a pas pu être observé.
+- **Clés manquantes dans une ligne** : accès directs `$ligne['quantite']` et `$ligne['prixUnitaire']` sans garde ni validation dans la boucle (`src/InvoiceCalculator.php:22`). Aucun test ne couvre ce cas (`tests/InvoiceCalculatorTest.php`). `HYPOTHÈSE` : le comportement runtime en cas de clé absente (avertissement, résultat inattendu, autre) n'est pas documenté dans le dépôt et n'a pas pu être observé.
 - **Valeurs négatives** : quantité ou prix unitaire négatifs ne sont pas rejetés — le calcul produirait un HT négatif sans erreur.
 - **Tableau vide** : `totalHorsTaxe([])` retourne `0`, `totalTtc([])` retourne `0`. Comportement cohérent mais non documenté comme cas métier attendu.
 - **Mélange de taux impossible** : une même facture ne peut pas combiner lignes à taux standard et lignes à taux réduit — limitation architecturale visible dans la signature (`bool $tauxReduit`).

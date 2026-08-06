@@ -6,7 +6,7 @@ Acceptable avec réserves — la cartographie est majoritairement fidèle au cod
 ## Problèmes bloquants
 
 ## Problèmes mineurs
-- `clé manquante = résultat faussé sans erreur` dans les points critiques de `InvoiceCalculator` va plus loin que la preuve disponible : le code prouve l'absence de garde (`src/InvoiceCalculator.php:21`), pas l'effet runtime exact. Le workflow calcul restait prudemment en hypothèse sur ce point.
+- `clé manquante = résultat faussé sans erreur` dans les points critiques de `InvoiceCalculator` va plus loin que la preuve disponible : le code prouve l'absence de garde (`src/InvoiceCalculator.php:22`), pas l'effet runtime exact. Le workflow calcul restait prudemment en hypothèse sur ce point.
 - `Rupture lors de migration 2.x` pour Monolog est formulé comme conséquence certaine alors que la carte des domaines avait explicitement requalifié ce sujet en hypothèse externe non prouvable depuis le dépôt ; sources : `.onboarding/domaines/CARTE_DES_DOMAINES.md`, `src/AppLogger.php:9`, `composer.json:8`.
 - `Supporte PHPUnit 9 ou 10` est inexact au regard de `composer.json`, qui fixe `phpunit/phpunit: ^9.6` uniquement ; preuve : `composer.json`.
 

@@ -52,7 +52,7 @@ Un `.onboarding/` préexistait dans le checkout (jamais poussé sur le distant, 
 | 2 classes seules (`InvoiceCalculator`, `AppLogger`) | `git ls-tree -r origin/main` = 7 fichiers ; `src/` = ces 2 classes | ✅ exact |
 | `TGC_STANDARD = 0.16`, `TGC_REDUIT = 0.05` | `src/InvoiceCalculator.php:11-12` | ✅ exact |
 | Ligne = `{label, quantite, prixUnitaire}`, francs CFP entiers | docblock `src/InvoiceCalculator.php:15` | ✅ exact |
-| `totalHorsTaxe()` / `totalTtc()`, TTC = `(int) round($ht*(1+$taux))` | `src/InvoiceCalculator.php:17-31` | ✅ exact |
+| `totalHorsTaxe()` / `totalTtc()`, TTC = `(int) round($ht*(1+$taux))` | `src/InvoiceCalculator.php:18-47` | ✅ exact |
 | Monolog 1.x `addInfo`/`addError`, canal `facturation`, `php://stderr` | `src/AppLogger.php:15-29` | ✅ exact |
 | `factureEmise(int)` info `total_ttc` / `erreurCalcul(string)` error `detail` | `src/AppLogger.php:21-29` | ✅ exact |
 | `monolog/monolog: ^1.25` | `composer.json:8` | ✅ exact |
