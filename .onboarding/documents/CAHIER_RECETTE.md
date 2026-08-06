@@ -243,7 +243,7 @@ Tests: 12, Assertions: 12+, OK.
 
 ### Test C1 : Dépendance Monolog présente et correcte
 
-**Objectif** : vérifier que Monolog 1.x est correctement installée
+**Objectif** : vérifier que Monolog 3.x est correctement installée
 
 **Étapes** :
 
@@ -252,38 +252,38 @@ Tests: 12, Assertions: 12+, OK.
 
 **Sortie attendue** :
 ```
-monolog/monolog  1.25.0 (ou supérieure, <2.0)
+monolog/monolog  3.0.0 (ou supérieure, <4.0)
 ```
 
 **Critère de recette** :
-- ✅ Version majeure = 1 (pas de Monolog 2.x ni 3.x)
-- ✅ Version >= 1.25 (mineure satisfait `^1.25`)
+- ✅ Version majeure = 3 (pas de Monolog 1.x, 2.x ni 4.x+)
+- ✅ Version >= 3.0 (mineure satisfait `^3.0`)
 
-**Preuve** : `composer.json:8` déclare `^1.25`
+**Preuve** : `composer.json:8` déclare `^3.0`
 
 **Confiance** : **high** (contrôlable techniquement)
 
 ---
 
 
-### Test C2 : PHP version >= 8.0
+### Test C2 : PHP version >= 8.1
 
 **Objectif** : vérifier que l'environnement d'exécution satisfait la contrainte
 
 **Étapes** :
 
 1. Exécuter `php --version`
-2. Extraire le numéro de version majeure
+2. Extraire le numéro de version majeure et mineure
 
 **Sortie attendue** :
 ```
-PHP 8.0.0 (ou supérieure)
+PHP 8.1.0 (ou supérieure)
 ```
 
 **Critère de recette** :
-- ✅ Version majeure >= 8
+- ✅ Version >= 8.1 (Monolog 3.x requiert PHP >= 8.1)
 
-**Preuve** : `composer.json:6` déclare `>=8.0`
+**Preuve** : `composer.json:6` déclare `>=8.1`
 
 **Confiance** : **high** (vérifiable simplement)
 
@@ -331,8 +331,8 @@ Failures : 0, Errors : 0
 
 | Test | Résultat attendu |
 |---|---|
-| C1 (Monolog version) | 1.25 ou supérieure < 2.0 |
-| C2 (PHP version) | >= 8.0 |
+| C1 (Monolog version) | 3.0 ou supérieure < 4.0 |
+| C2 (PHP version) | >= 8.1 |
 
 ---
 

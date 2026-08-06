@@ -54,8 +54,8 @@ tests/
      └──────────────────────┬─────────────────────┤
                             │                     │
                        No internal                │
-                       orchestration       Monolog 1.x
-                                             (^1.25)
+                       orchestration       Monolog 3.x
+                                             (^3.0)
 ```
 
 **Pas de couche d'intégration** : les deux classes coexistent sans code qui les lie. L'application hôte les orchestre.
@@ -180,7 +180,7 @@ Aucune — classe autonome, zéro dépendance Composer.
 `src/AppLogger.php` — 30 lignes
 
 ### Responsabilité
-Adaptateur technique pour l'enregistrement des événements de facturation via Monolog 1.x.
+Adaptateur technique pour l'enregistrement des événements de facturation via Monolog 3.x.
 
 ### Namespace et autoload
 - Namespace : `App\`
@@ -212,59 +212,57 @@ $this->logger->pushHandler(new StreamHandler($fichier));
 - Pas d'interface — impossible de substituer pour tests sans sous-classement
 - Dépend directement de `Monolog\Logger` et `Monolog\Handler\StreamHandler`
 
-**Dépendance Monolog** : `monolog/monolog: ^1.25` (déclaré en `composer.json:8`)
+**Dépendance Monolog** : `monolog/monolog: ^3.0` (déclaré en `composer.json:8`)
 
 #### `factureEmise(int $totalTtc): void`
 
 **Signature** : ligne 21  
 **Paramètre** : `$totalTtc` — montant TTC en francs CFP entiers
 
-**Implémentation** : lignes 23-24
+**Implémentation** : lignes 21-24
 ```php
-$this->logger->addInfo('Facture émise', ['total_ttc' => $totalTtc]);
+$this->logger->info('Facture émise', ['total_ttc' => $totalTtc]);
 ```
 
 **Points critiques** :
-- Utilise l'API Monolog 1.x `addInfo()` (déclaration de compatibilité : docblock ligne 9)
+- Utilise l'API Monolog 3.x `info()` (conforme à PSR-3 standard — docblock ligne 9)
 - Ajoute un contexte Monolog `total_ttc` avec la valeur
 - Pas de gestion d'exception — les erreurs Monolog remontent à l'appelant
-
-**État** : `HYPOTHÈSE` — l'API `addInfo()` serait retirée en Monolog 2.0 (connaissance externe, non sourcée dans le dépôt)
 
 #### `erreurCalcul(string $message): void`
 
 **Signature** : ligne 26  
 **Paramètre** : `$message` — description de l'erreur
 
-**Implémentation** : lignes 28-29
+**Implémentation** : lignes 26-29
 ```php
-$this->logger->addError('Erreur de calcul', ['detail' => $message]);
+$this->logger->error('Erreur de calcul', ['detail' => $message]);
 ```
 
 **Points critiques** :
-- Utilise l'API Monolog 1.x `addError()` (même déclaration de compatibilité)
+- Utilise l'API Monolog 3.x `error()` (conforme à PSR-3 standard)
 - Ajoute un contexte Monolog `detail` avec le message
 - Pas de gestion d'exception
 
 ### Docblock et déclarations
 
-Ligne 9-11 : docblock indiquant l'utilisation de l'API Monolog 1.x
+Ligne 8-10 : docblock indiquant l'utilisation de l'API Monolog 3.x
 ```php
 /**
- * @uses Monolog\Logger (v1.x API: addInfo/addError) ...
+ * Journalisation applicative — API Monolog 3.x (info/error).
 ```
 
-Cette déclaration **est importante** : elle documente que le code dépend spécifiquement des méthodes `addInfo`/`addError` qui sont Monolog 1.x, pas 2.x+.
+Cette déclaration **est importante** : elle documente que le code dépend spécifiquement des méthodes `info()`/`error()` qui sont PSR-3 standard depuis Monolog 3.x (les méthodes `addInfo`/`addError` ont été retirées en Monolog 2.0).
 
 ### Dépendances
 | Dépendance | Version | Déclaration |
 |---|---|---|
-| `Monolog` | `^1.25` | `composer.json:8` |
+| `Monolog` | `^3.0` | `composer.json:8` |
 
 ### Risques et dette
 | Risque | Localisation | Sévérité | Mitigation |
 |---|---|---|---|
-| Dépendance à l'API Monolog 1.x | lignes 23,28 + docblock 9 | Moyen | Vigilance lors d'une montée vers Monolog 2.x ; `addInfo()`/`addError()` seraient à adapter |
+| Dépendance à l'API Monolog 3.x | lignes 23,28 | Moyen | Vigilance lors d'une montée vers Monolog 4.x (à dater) ; les méthodes `info()`/`error()` sont standards PSR-3 mais évolution possible |
 | Pas d'interface pour injection | lignes 17-18 | Moyen | Extraire une interface `LoggerInterface` |
 | Aucun test | (fichier non couvert) | Moyen | Ajouter `AppLoggerTest.php` |
 | Pas de gestion d'exception | lignes 23,28 | Faible | Les erreurs Monolog remontent à l'appelant — à documenter |
@@ -278,23 +276,23 @@ Cette déclaration **est importante** : elle documente que le code dépend spéc
 
 | Package | Version déclarée | But | Fichier |
 |---|---|---|---|
-| `monolog/monolog` | `^1.25` | Journalisation applicative | `src/AppLogger.php` |
+| `monolog/monolog` | `^3.0` | Journalisation applicative | `src/AppLogger.php` |
 
-**Vigilance** : l'API utilisée (`addInfo`, `addError`) appartient à Monolog 1.x. La contrainte `^1.25` protège le code contre des versions majeures qui changeraient cette API. Point de vigilance lors d'une montée de version.
+**Vigilance** : l'API utilisée (`info`, `error`) appartient à Monolog 3.x et suit le standard PSR-3. La contrainte `^3.0` protège le code contre des versions majeures qui changeraient cette API. Point de vigilance lors d'une montée de version.
 
 ### Tests/Développement
 
 | Package | Version déclarée | But | Fichier |
 |---|---|---|---|
-| `phpunit/phpunit` | `^9.6` | Tests unitaires | `tests/InvoiceCalculatorTest.php` |
+| `phpunit/phpunit` | `^10.5` | Tests unitaires | `tests/InvoiceCalculatorTest.php` |
 
-**État** : PHPUnit 9.x sans configuration de couverture (`phpunit.xml` ne déclare pas `<coverage>`).
+**État** : PHPUnit 10.x sans configuration de couverture (`phpunit.xml` ne déclare pas `<coverage>`).
 
 ### PHP version minimale
 
-Déclaré en `composer.json:6` : `"php": ">=8.0"`
+Déclaré en `composer.json:6` : `"php": ">=8.1"`
 
-**Observation** : le code n'exploite aucune syntaxe PHP 8.1+ (pas de `match`, pas de constructor promotion, pas de named arguments) — le minimum 8.0 est volontairement large.
+**Observation** : PHP 8.1 est requis par Monolog 3.x (contrainte de la dépendance). Le code lui-même fonctionne avec PHP 8.0+, mais la chaîne de dépendances impose PHP 8.1 minimum.
 
 ---
 
@@ -306,15 +304,15 @@ Déclaré en `composer.json:6` : `"php": ">=8.0"`
 
 | Clé | Valeur | Rôle |
 |---|---|---|
-| `name` | `shift/shift-pilot-php` | Identifiant package |
-| `type` | `library` | Type : bibliothèque (pas une application) |
-| `require` | `php: >=8.0`, `monolog/monolog: ^1.25` | Dépendances production |
-| `require-dev` | `phpunit/phpunit: ^11.0` | Dépendances tests |
+| `name` | `shift/pilot-php` | Identifiant package |
+| `type` | `project` | Type : projet (pas une bibliothèque) |
+| `require` | `php: >=8.1`, `monolog/monolog: ^3.0` | Dépendances production |
+| `require-dev` | `phpunit/phpunit: ^10.5` | Dépendances tests |
 | `autoload.psr-4` | `App\\` → `src/` | Autoload PSR-4 |
-| `autoload.tests.psr-4` | `App\\Tests\\` → `tests/` | Autoload tests |
-| `scripts.test` | `phpunit` | Commande `composer test` |
+| `autoload-dev.psr-4` | `App\\Tests\\` → `tests/` | Autoload tests |
+| `scripts.test` | `phpunit tests` | Commande `composer test` |
 
-**Absence notable** : pas de `composer.lock` (README:13 le mentionne explicitement). Conséquence : deux installations peuvent résoudre des versions différentes de Monolog dans la plage `^1.25`.
+**Absence notable** : pas de `composer.lock` (absent du dépôt). Conséquence : deux installations peuvent résoudre des versions différentes de Monolog dans la plage `^3.0`.
 
 ---
 
@@ -339,11 +337,11 @@ Déclaré en `composer.json:6` : `"php": ">=8.0"`
 
 | Chemin | Critique pour | Localisation | Points d'attention |
 |---|---|---|---|
-| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:21-26` | Pas de validation de clés |
-| Sélection de taux | TTC au taux correct | `src/InvoiceCalculator.php:42` | Booléen unique, pas de taux mixte |
-| Arrondi final | Exactitude du TTC | `src/InvoiceCalculator.php:27,45` | `(int) round()` explicite |
-| Construction du logger | Journalisation | `src/AppLogger.php:17-18` | Instanciation directe Monolog |
-| API `addInfo`/`addError` | Événements enregistrés | `src/AppLogger.php:23,28` | Monolog 1.x seulement |
+| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:21-26` | Validation de clés présente |
+| Sélection de taux | TTC au taux correct | `src/InvoiceCalculator.php:48` | Taux mixte supporté (par ligne) |
+| Arrondi final | Exactitude du TTC | `src/InvoiceCalculator.php:28,51` | `(int) round()` explicite |
+| Construction du logger | Journalisation | `src/AppLogger.php:15-19` | Instanciation directe Monolog |
+| API `info()`/`error()` | Événements enregistrés | `src/AppLogger.php:23,28` | Monolog 3.x (PSR-3 standard) |
 
 ---
 
@@ -387,7 +385,7 @@ Application hôte
 | Pas d'ORM | Pas de persistance | Les factures existent en mémoire, ne sont jamais sauvegardées |
 | Pas d'intégration `InvoiceCalculator` + `AppLogger` | Orchestration en amont | L'application hôte doit lier les deux classes |
 | Pas de test `AppLogger` | `AppLogger` non validé | Régression Monolog ne serait détectée que en production |
-| Pas de test cas limites | Comportement non prouvé | Tableau vide, clé manquante, valeur négative : non testés |
+| Tests cas limites partiels | Certains cas non testés | Tableau vide, valeurs négatives : non testés ; débordement et clés manquantes : testés |
 | Pas de `<coverage>` en PHPUnit | Couverture inconnue | La proportion de lignes testées n'est pas mesurée |
 
 ---
@@ -409,11 +407,12 @@ Application hôte
 
 ## Points de vigilance pour les évolutions futures
 
-1. **Montée de version Monolog** — si la contrainte `^1.25` est relâchée, vérifier que l'API reste compatible (`addInfo()`, `addError()`)
-2. **Taux mixte** — si le besoin émerge, refonte d'API requise (paramètre array de taux par ligne, ou appels multiples documentés)
-3. **Validation des lignes** — actuellement zéro validation ; si le besoin de robustesse augmente, ajouter des gardes
-4. **Composer.lock** — créer et versionner pour reproductibilité
-5. **Couverture de test** — activer `<coverage>` dans `phpunit.xml` et tester `AppLogger`
+1. **Montée de version Monolog** — si la contrainte `^3.0` est relâchée vers Monolog 4.x, vérifier que l'API PSR-3 (`info()`, `error()`) reste compatible
+2. **Montée de version PHPUnit** — si la contrainte `^10.5` est relâchée vers PHPUnit 11.x, vérifier la compatibilité (PHPUnit 11 requiert PHP >= 8.2)
+3. **Taux mixte** — ✅ supporté depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-382 (taux par ligne)
+4. **Validation des lignes** — ✅ présente depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426 (InvalidArgumentException)
+5. **Composer.lock** — créer et versionner pour reproductibilité
+6. **Couverture de test** — activer `<coverage>` dans `phpunit.xml` et tester `AppLogger`
 
 ---
 

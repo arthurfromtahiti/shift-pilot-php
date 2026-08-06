@@ -43,7 +43,7 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 
 ### Acteur système : `App\AppLogger`
 
-**Rôle** : enregistre les événements de facturation via Monolog 1.x.
+**Rôle** : enregistre les événements de facturation via Monolog 3.x.
 
 **Capacités** :
 - Reçoit la notification « facture émise » avec le montant TTC
@@ -53,7 +53,7 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 
 **Limitations** :
 - Ne peut pas substituer de handler alternatif sans modification du source
-- API Monolog 1.x uniquement (méthodes `addInfo`/`addError`)
+- API Monolog 3.x (méthodes PSR-3 `info()`/`error()`)
 
 ## Parcours utilisateur et cas testés
 
@@ -192,14 +192,14 @@ $totalTTC = $calc->totalTtc($lignes);  // → 22100 F CFP
 #### R9 — Méthode « facture émise »
 - **Énoncé** : une méthode `factureEmise()` reçoit le montant TTC et l'enregistre via le logger Monolog
 - **Signature** : `factureEmise(int $totalTTC): void`
-- **Implémentation** : appelle `$this->logger->addInfo()` avec le contexte `total_ttc`
+- **Implémentation** : appelle `$this->logger->info()` avec le contexte `total_ttc`
 - **Preuve** : `src/AppLogger.php:21-24`
 - **Note** : l'écriture effective des logs dépend de la configuration du handler Monolog côté application hôte
 
 #### R10 — Méthode « erreur de calcul »
 - **Énoncé** : une méthode `erreurCalcul()` reçoit un message et l'enregistre en tant que message d'erreur via le logger Monolog
 - **Signature** : `erreurCalcul(string $message): void`
-- **Implémentation** : appelle `$this->logger->addError()` avec le contexte `detail`
+- **Implémentation** : appelle `$this->logger->error()` avec le contexte `detail`
 - **Preuve** : `src/AppLogger.php:26-29`
 - **Note** : l'écriture effective des logs dépend de la configuration du handler Monolog côté application hôte
 
@@ -212,7 +212,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 22100 F CFP
 
 #### R12 — Aucun traitement du message en sortie
 - **Énoncé** : la bibliothèque ne filtre, n'enrichit ni ne formate les messages — elle les transmet tels quels à Monolog
-- **Preuve** : `src/AppLogger.php:23,28` (appels directs à `$this->logger->addInfo()` / `addError()`)
+- **Preuve** : `src/AppLogger.php:23,28` (appels directs à `$this->logger->info()` / `error()`)
 - **Impact dev** : le formatage des logs relève de la configuration Monolog côté application hôte
 
 ## Données
