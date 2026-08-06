@@ -24,7 +24,7 @@ class InvoiceCalculator
             }
             $total += $ligne['quantite'] * $ligne['prixUnitaire'];
         }
-        return $total;
+        return (int) round($total);
     }
 
     /**
