@@ -95,4 +95,18 @@ final class InvoiceCalculatorTest extends TestCase
         $result = $calc->totalHorsTaxe($lignes);
         $this->assertIsInt($result);
     }
+
+    public function testTotalHorsTaxeLèveOverflowExceptionSiDépassementPhpIntMax(): void
+    {
+        $this->expectException(\OverflowException::class);
+        $calc = new InvoiceCalculator();
+        $calc->totalHorsTaxe([['label' => 'Overflow', 'quantite' => PHP_INT_MAX, 'prixUnitaire' => 2]]);
+    }
+
+    public function testTotalTtcLèveOverflowExceptionSiDépassementPhpIntMax(): void
+    {
+        $this->expectException(\OverflowException::class);
+        $calc = new InvoiceCalculator();
+        $calc->totalTtc([['label' => 'Overflow', 'quantite' => 100000000000, 'prixUnitaire' => 100000000000]]);
+    }
 }
