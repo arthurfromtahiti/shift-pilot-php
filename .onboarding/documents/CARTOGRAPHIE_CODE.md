@@ -24,10 +24,10 @@ src/
 
 ```
 tests/
-└── InvoiceCalculatorTest.php  [102 lignes]   10 tests PHPUnit (nominaux + limites)
+└── InvoiceCalculatorTest.php  [102 lignes]   12 tests PHPUnit (nominaux + limites)
 ```
 
-**Total** : 7 fichiers versionnés ; 2 classes PHP ; 10 tests exécutables.
+**Total** : 7 fichiers versionnés ; 2 classes PHP ; 12 tests exécutables.
 
 ---
 
@@ -65,7 +65,7 @@ tests/
 ## Classe 1 : `App\InvoiceCalculator`
 
 ### Fichier
-`src/InvoiceCalculator.php` — 32 lignes
+`src/InvoiceCalculator.php` — 57 lignes
 
 ### Responsabilité
 Calcul du montant HT/TTC d'une facture selon les règles TGC.
@@ -94,10 +94,10 @@ Calcul du montant HT/TTC d'une facture selon les règles TGC.
 **Retour** : somme des `quantite × prixUnitaire` pour chaque ligne, en francs CFP entiers
 
 **Exceptions levées** :
-- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 24)
-- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 29-30)
+- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 23)
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 29-31)
 
-**Implémentation** : lignes 21-32
+**Implémentation** : lignes 21-33
 ```php
 $total = 0;
 foreach ($lignes as $ligne) {
@@ -129,10 +129,10 @@ return (int) $rounded;
 **Retour** : somme des lignes avec leur TGC respective appliquée, arrondie au franc CFP entier
 
 **Exceptions levées** :
-- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 46)
-- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 52-53)
+- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 45)
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 52-54)
 
-**Implémentation** : lignes 43-55
+**Implémentation** : lignes 43-56
 ```php
 $total = 0.0;
 foreach ($lignes as $ligne) {
@@ -154,11 +154,13 @@ return (int) $rounded;
 - Accumulateur en `float` pour laisser la précision intermédiaire (ligne 43)
 - Support de taux par ligne via la clé optionnelle `taux` (ligne 48) — défaut : `TGC_STANDARD`
 - Arrondit une seule fois, après la somme totale (ligne 51)
-- Vérifie le débordement avant de retourner (lignes 52-54)
+- Vérifie le débordement avant de retourner (lignes 52-55)
 
 **Tests couvrant** :
-- `testTotalTtcTauxStandard` : HT=10000, taux=16 %, résultat 11600 ✓
-- `testTotalTtcTauxReduit` : HT=10000, taux=5 %, résultat 10500 ✓
+- `testTotalTtcTauxStandard` (ligne 20) : HT=10000, taux=16 %, résultat 11600 ✓
+- `testTotalTtcTauxReduit` (ligne 27) : HT=10000, taux=5 %, résultat 10500 ✓
+- `testTotalTtcTauxMixte` (ligne 34) : taux mixtes, résultat 22100 ✓
+- `testTotalTtcSansTauxUtiliseTauxStandard` (ligne 47) : taux par défaut utilisé ✓
 
 ### Dépendances
 Aucune — classe autonome, zéro dépendance Composer.

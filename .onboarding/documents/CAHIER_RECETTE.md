@@ -22,7 +22,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `5f5c8ee00765beb04be08b5bcb089066c36a0f30` (dernier commit : "Seed pilot PHP")
+- SHA cible : `e5a7644` (dernier commit : "fix: lever OverflowException si totalHorsTaxe/totalTtc dépasse PHP_INT_MAX")
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -135,15 +135,15 @@ $this->assertSame(10500, $calc->totalTtc([
 **Étapes** :
 
 1. Exécuter la suite : `composer test`
-2. Localiser le test `testOverflowHorsTaxe` dans la sortie
+2. Localiser le test `testTotalHorsTaxeLèveOverflowExceptionSiDépassementPhpIntMax` dans la sortie
 
 **Assertion attendue** :
 ```php
-// Valeur très élevée qui dépasse PHP_INT_MAX
-$calc = new InvoiceCalculator();
+// Valeur qui dépasse PHP_INT_MAX quand multipliée
 $this->expectException(\OverflowException::class);
+$calc = new InvoiceCalculator();
 $calc->totalHorsTaxe([
-    ['label' => 'Très cher', 'quantite' => 9223372036854775807, 'prixUnitaire' => 9223372036854775807],
+    ['label' => 'Overflow', 'quantite' => PHP_INT_MAX, 'prixUnitaire' => 2],
 ]);
 ```
 
@@ -151,7 +151,7 @@ $calc->totalHorsTaxe([
 - ✅ Exception `\OverflowException` levée avec message contenant « PHP_INT_MAX »
 - ✅ Pas de valeur erronée retournée
 
-**Preuve** : `tests/InvoiceCalculatorTest.php` (test de débordement)
+**Preuve** : `tests/InvoiceCalculatorTest.php:89`
 
 **Confiance** : **high** (cas limite critique)
 
@@ -164,22 +164,22 @@ $calc->totalHorsTaxe([
 **Étapes** :
 
 1. Exécuter la suite : `composer test`
-2. Localiser le test `testOverflowTtc` dans la sortie
+2. Localiser le test `testTotalTtcLèveOverflowExceptionSiDépassementPhpIntMax` dans la sortie
 
 **Assertion attendue** :
 ```php
 // Total qui déborde même après application du taux
-$calc = new InvoiceCalculator();
 $this->expectException(\OverflowException::class);
+$calc = new InvoiceCalculator();
 $calc->totalTtc([
-    ['label' => 'Très cher', 'quantite' => 9223372036854775807, 'prixUnitaire' => 9223372036854775807],
+    ['label' => 'Overflow', 'quantite' => 100000000000, 'prixUnitaire' => 100000000000],
 ]);
 ```
 
 **Critère de recette** :
 - ✅ Exception `\OverflowException` levée avec message contenant « PHP_INT_MAX »
 
-**Preuve** : `tests/InvoiceCalculatorTest.php` (test de débordement TTC)
+**Preuve** : `tests/InvoiceCalculatorTest.php:96`
 
 **Confiance** : **high** (cas limite critique)
 
@@ -225,12 +225,12 @@ $calc->totalHorsTaxe([
 **Sortie attendue** :
 ```
 PHPUnit 11.x.x ...
-Tests: 10, Assertions: 10+, OK.
+Tests: 12, Assertions: 12+, OK.
 ```
 
 **Critères de recette** :
 - ✅ Exit code = 0 (succès)
-- ✅ 10 tests exécutés (nominaux + exceptions + cas limites)
+- ✅ 12 tests exécutés (nominaux + exceptions + cas limites)
 - ✅ 0 erreurs, 0 failures
 
 **Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap
@@ -308,13 +308,20 @@ PHP 8.0.0 (ou supérieure)
 ### Bloc A — Tests d'exécution (PHPUnit)
 
 ```
-✓ testTotalHorsTaxe        PASS
-✓ testTotalTtcTauxStandard PASS
-✓ testTotalTtcTauxReduit   PASS
-✓ testOverflowHorsTaxe     PASS
-✓ testOverflowTtc          PASS
-────────────────────────────────
-Tests : 5, Assertions : 5+
+✓ testTotalHorsTaxe                                               PASS
+✓ testTotalTtcTauxStandard                                        PASS
+✓ testTotalTtcTauxReduit                                          PASS
+✓ testTotalTtcTauxMixte                                           PASS
+✓ testTotalTtcSansTauxUtiliseTauxStandard                         PASS
+✓ testTotalHorsTaxeLigneSansPrixUnitaireLèveException             PASS
+✓ testTotalHorsTaxeLigneSansQuantiteLèveException                PASS
+✓ testTotalTtcLigneSansPrixUnitaireLèveException                 PASS
+✓ testTotalTtcLigneSansQuantiteLèveException                     PASS
+✓ testTotalHorsTaxeLigneSansAucuneClésRequises                   PASS
+✓ testTotalHorsTaxeLèveOverflowExceptionSiDépassementPhpIntMax   PASS
+✓ testTotalTtcLèveOverflowExceptionSiDépassementPhpIntMax        PASS
+────────────────────────────────────────────────────────────────────
+Tests : 12, Assertions : 12+
 Failures : 0, Errors : 0
 ```
 

@@ -109,7 +109,7 @@ $lignes = [
     ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16],  // Standard
     ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05],  // Réduit
 ];
-$totalTTC = $calc->totalTtc($lignes);  // → 21500 F CFP
+$totalTTC = $calc->totalTtc($lignes);  // → 22100 F CFP
 // Calcul : (10000 × 1.16) + (10000 × 1.05) = 11600 + 10500 = 22100
 ```
 
@@ -122,9 +122,9 @@ $totalTTC = $calc->totalTtc($lignes);  // → 21500 F CFP
 #### R1 — Ligne de facture
 - **Énoncé** : une ligne de facture contient au minimum une quantité et un prix unitaire
 - **Format** : tableau associatif PHP avec au minimum les clés `quantite: int, prixUnitaire: int` ; la clé `label` est optionnelle et ignorée
-- **Validation** : aucune — accès direct aux clés `quantite` et `prixUnitaire` sans garde
-- **Preuve** : `src/InvoiceCalculator.php:21-26` n'accède qu'à `quantite` et `prixUnitaire`
-- **Impact sur dev** : l'appelant doit garantir que chaque ligne a au minimum les clés `quantite` et `prixUnitaire`
+- **Validation** : vérification explicite de la présence des clés `quantite` et `prixUnitaire` ; l'absence lève `\InvalidArgumentException`
+- **Preuve** : `src/InvoiceCalculator.php:23,45` vérifie `!isset($ligne['quantite'], $ligne['prixUnitaire'])` avant accès
+- **Impact sur dev** : l'appelant doit garantir que chaque ligne a au minimum les clés `quantite` et `prixUnitaire`, ou traiter l'exception
 
 #### R2 — Montant hors taxe (HT)
 - **Énoncé** : le montant HT d'une facture est la somme des produits quantité × prix unitaire pour chaque ligne
@@ -136,24 +136,25 @@ $totalTTC = $calc->totalTtc($lignes);  // → 21500 F CFP
 #### R3 — Taux TGC standard
 - **Énoncé** : la TGC standard s'applique au taux de 16 %
 - **Constante** : `TGC_STANDARD = 0.16` (`src/InvoiceCalculator.php:11`)
-- **Condition d'application** : paramètre `$tauxReduit = false` (défaut)
-- **Preuve** : `src/InvoiceCalculator.php:11`, test `testTotalTtcTauxStandard`
+- **Condition d'application** : défaut utilisé par chaque ligne qui ne spécifie pas de clé `taux`
+- **Preuve** : `src/InvoiceCalculator.php:11`, test `testTotalTtcTauxStandard`, test `testTotalTtcSansTauxUtiliseTauxStandard`
 - **HYPOTHÈSE de conformité** : ce taux correspond aux normes TGC polynésiennes (non sourcé dans le dépôt)
 
 #### R4 — Taux TGC réduit
-- **Énoncé** : une TGC réduite au taux de 5 % peut être appliquée à une facture entière
+- **Énoncé** : une TGC réduite au taux de 5 % peut être appliquée par ligne via la clé `taux`
 - **Constante** : `TGC_REDUIT = 0.05` (`src/InvoiceCalculator.php:12`)
-- **Condition d'application** : paramètre `$tauxReduit = true`
-- **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit`
+- **Condition d'application** : chaque ligne peut spécifier `'taux' => 0.05` (ou une autre valeur)
+- **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit`, test `testTotalTtcTauxMixte`
 - **HYPOTHÈSE métier** : ce taux est destiné à certains produits (ex. première nécessité) selon la réglementation TGC polynésienne (non sourcé dans le dépôt)
 
 #### R5 — Montant TTC et arrondi
-- **Énoncé** : le montant TTC est calculé en appliquant le taux TGC au HT, puis en arrondissant au franc CFP entier
-- **Formule** : `TTC = (int) round(HT × (1 + taux_TGC))`
+- **Énoncé** : le montant TTC est calculé en appliquant le taux TGC à chaque ligne, puis en arrondissant la somme au franc CFP entier
+- **Formule** : `TTC = (int) round(Σ(quantite_i × prixUnitaire_i × (1 + taux_i)))`
 - **Mode d'arrondi** : `PHP_ROUND_HALF_UP` (défaut PHP sans argument explicite)
-- **Preuve** : `src/InvoiceCalculator.php:27,45`
+- **Preuve** : `src/InvoiceCalculator.php:43-51`
 - **Exemple** : HT=10000 F CFP, taux=16 % → `10000 × 1.16 = 11600 F CFP` exact (test `testTotalTtcTauxStandard`)
 - **Exemple** : HT=10000 F CFP, taux=5 % → `10000 × 1.05 = 10500 F CFP` exact (test `testTotalTtcTauxReduit`)
+- **Exemple mixte** : (10000 × 1.16) + (10000 × 1.05) = 22100 F CFP (test `testTotalTtcTauxMixte`)
 - **HYPOTHÈSE de conformité** : le mode d'arrondi PHP par défaut est conforme à la réglementation TGC CFP (non sourcé dans le dépôt)
 
 #### R6 — Taux par ligne (support des taux mixtes)
