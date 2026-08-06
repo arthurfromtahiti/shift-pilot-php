@@ -161,7 +161,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 22100 F CFP
 - **Implémentation** : accès `$ligne['taux'] ?? self::TGC_STANDARD` — défaut au taux standard si absent
 - **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) peut être calculée en un seul appel
 - **Preuve** : `src/InvoiceCalculator.php:48` (taux par ligne)
-- **État** : capacité nouvelle (depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426) ; remplace l'ancienne API booléenne
+- **État** : capacité nouvelle (depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-382) ; remplace l'ancienne API booléenne
 
 #### R7 — Pas de remise, pas d'avoir
 - **Énoncé** : la bibliothèque calcule un montant brut sans possibilité de remise ou d'avoir

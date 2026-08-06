@@ -224,7 +224,7 @@ $calc->totalHorsTaxe([
 
 **Sortie attendue** :
 ```
-PHPUnit 11.x.x ...
+PHPUnit 10.x.x ...
 Tests: 12, Assertions: 12+, OK.
 ```
 

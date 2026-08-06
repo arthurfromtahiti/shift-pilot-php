@@ -7,7 +7,7 @@
 ```
 src/
 ├── InvoiceCalculator.php  [57 lignes]   Unique classe métier — calcul HT/TTC
-└── AppLogger.php          [30 lignes]   Adaptateur technique Monolog 1.x
+└── AppLogger.php          [30 lignes]   Adaptateur technique Monolog 3.x
 ```
 
 ### Fichiers de configuration et support
