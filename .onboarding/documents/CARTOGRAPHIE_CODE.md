@@ -87,47 +87,74 @@ Calcul du montant HT/TTC d'une facture selon les règles TGC.
 
 #### `totalHorsTaxe(array $lignes): int`
 
-**Signature** : ligne 17  
+**Signature** : ligne 19  
 **Paramètre** :
 - `$lignes` : array de lignes, chaque ligne = `{label: string, quantite: int, prixUnitaire: int}`
 
 **Retour** : somme des `quantite × prixUnitaire` pour chaque ligne, en francs CFP entiers
 
-**Implémentation** : lignes 19-22
+**Exceptions levées** :
+- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 24)
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 29-30)
+
+**Implémentation** : lignes 21-32
 ```php
 $total = 0;
 foreach ($lignes as $ligne) {
+    if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+        throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+    }
     $total += $ligne['quantite'] * $ligne['prixUnitaire'];
 }
-return $total;
+$rounded = round($total);
+if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) {
+    throw new \OverflowException('Le total hors taxe dépasse les bornes de PHP_INT_MAX.');
+}
+return (int) $rounded;
 ```
 
 **Points critiques** :
-- Pas de validation — accès direct aux clés sans garde (ligne 21 et 100)
+- Valide la présence des clés `quantite` et `prixUnitaire` avant de les accéder (ligne 23)
+- Vérifie le débordement après arrondi avant de retourner (lignes 29-31)
 - Pas de typehint sur le contenu des lignes (pas de vérification à la compilation)
 
 **Test couvrant** : `testTotalHorsTaxe` — 2 lignes, résultat 25000 ✓
 
-#### `totalTtc(array $lignes, bool $tauxReduit = false): int`
+#### `totalTtc(array $lignes): int`
 
-**Signature** : ligne 26  
-**Paramètres** :
-- `$lignes` : idem `totalHorsTaxe`
-- `$tauxReduit` : booléen, défaut `false` (taux standard)
+**Signature** : ligne 41  
+**Paramètre** :
+- `$lignes` : array de lignes, chaque ligne = `{label: string, quantite: int, prixUnitaire: int, taux?: float}` ; chaque ligne peut porter son propre taux TGC via la clé optionnelle `taux`
 
-**Retour** : `(int) round(HT × (1 + taux))` où taux = 0.16 (défaut) ou 0.05
+**Retour** : somme des lignes avec leur TGC respective appliquée, arrondie au franc CFP entier
 
-**Implémentation** : lignes 28-30
+**Exceptions levées** :
+- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire` (ligne 46)
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN` (lignes 52-53)
+
+**Implémentation** : lignes 43-55
 ```php
-$ht = $this->totalHorsTaxe($lignes);
-$taux = $tauxReduit ? self::TGC_REDUIT : self::TGC_STANDARD;
-return (int) round($ht * (1 + $taux));
+$total = 0.0;
+foreach ($lignes as $ligne) {
+    if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+        throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+    }
+    $taux = $ligne['taux'] ?? self::TGC_STANDARD;
+    $total += $ligne['quantite'] * $ligne['prixUnitaire'] * (1 + $taux);
+}
+$rounded = round($total);
+if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) {
+    throw new \OverflowException('Le total TTC dépasse les bornes de PHP_INT_MAX.');
+}
+return (int) $rounded;
 ```
 
 **Points critiques** :
-- Appelle `totalHorsTaxe` en interne — partage les mêmes limitations de validation
-- Taux unique pour l'ensemble du HT — impossible de panacher taux standard et réduit
-- Mode d'arrondi : `round()` sans argument = `PHP_ROUND_HALF_UP` (défaut)
+- Valide la présence des clés `quantite` et `prixUnitaire` avant de les accéder (ligne 45)
+- Accumulateur en `float` pour laisser la précision intermédiaire (ligne 43)
+- Support de taux par ligne via la clé optionnelle `taux` (ligne 48) — défaut : `TGC_STANDARD`
+- Arrondit une seule fois, après la somme totale (ligne 51)
+- Vérifie le débordement avant de retourner (lignes 52-54)
 
 **Tests couvrant** :
 - `testTotalTtcTauxStandard` : HT=10000, taux=16 %, résultat 11600 ✓
@@ -139,10 +166,9 @@ Aucune — classe autonome, zéro dépendance Composer.
 ### Risques et dette
 | Risque | Localisation | Sévérité | Mitigation |
 |---|---|---|---|
-| Absence de garde sur clés | ligne 21 | Moyen | Ajouter une validation ou une exception |
-| Tableau vide retourne 0 | lignes 19-22 | Faible | Documenter le comportement ou le rejeter |
-| Valeur négative non rejetée | ligne 21 | Faible | Documenter ou valider |
-| Taux unique par facture | ligne 26 | Moyen pour prod, Faible pour pilote | Refonte d'API si taux mixtes requis |
+| Tableau vide retourne 0 | lignes 21-32 | Faible | Documenter le comportement ou le rejeter |
+| Valeur négative non rejetée | ligne 26 | Faible | Documenter ou valider |
+| Débordement d'entier | lignes 29-31, 52-54 | Élevé | ✅ Levée d'exception `OverflowException` (résolu en fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426) |
 
 ---
 
@@ -389,6 +415,6 @@ Application hôte
 
 ---
 
-**Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30`  
-**Date de dernière vérification** : 2026-08-04
+**Branche** : `main` (issue: SHIAAAAAAAAAAAAAAAAAAAAAAAA-426)  
+**SHA référence** : `e5a7644` (fix: lever OverflowException si totalHorsTaxe/totalTtc dépasse PHP_INT_MAX)  
+**Date de dernière vérification** : 2026-08-06

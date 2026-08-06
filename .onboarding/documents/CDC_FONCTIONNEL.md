@@ -28,14 +28,17 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 **Rôle** : calcule les montants TTC selon les règles métier de la TGC.
 
 **Capacités** :
-- Accepte une liste de lignes au format `{label: string, quantite: int, prixUnitaire: int}`
-- Retourne le total HT (somme des `quantite × prixUnitaire`)
-- Retourne le total TTC en appliquant un taux TGC sélectionné (standard 16 % ou réduit 5 %)
+- `totalHorsTaxe(array $lignes): int` — accepte une liste de lignes au format `{label?: string, quantite: int, prixUnitaire: int}`, retourne le total HT
+- `totalTtc(array $lignes): int` — accepte une liste de lignes au format `{label?: string, quantite: int, prixUnitaire: int, taux?: float}`, retourne le total TTC avec application des taux par ligne
+- Supporte les taux TGC mixtes : chaque ligne peut spécifier son propre taux via la clé `taux` (défaut : `TGC_STANDARD = 0.16`)
 - Arrondit le résultat final au franc CFP entier
 
-**Limitations** :
-- Applique un taux unique à toutes les lignes
-- Ne valide pas les entrées (pas de garde sur clés manquantes, pas de rejet de valeurs négatives)
+**Exceptions levées** :
+- `\InvalidArgumentException` : si une ligne manque les clés `quantite` ou `prixUnitaire`
+- `\OverflowException` : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN`
+
+**Comportements** :
+- Ne valide pas les valeurs négatives (quantités/prix négatifs sont acceptés pour les avoirs)
 - Retourne 0 F CFP si la liste de lignes est vide (comportement non documenté comme erreur)
 
 ### Acteur système : `App\AppLogger`
@@ -68,33 +71,49 @@ $totalHT = $calc->totalHorsTaxe($lignes);  // → 25000 F CFP
 **Règle appliquée** : R2 — somme des produits `quantite × prixUnitaire`  
 **Preuve** : test `testTotalHorsTaxe` retourne `25000`
 
-### Cas 2 : Calcul du TTC au taux standard
-L'application hôte appelle `totalTtc()` avec le paramètre par défaut (`$tauxReduit = false`).
+### Cas 2 : Calcul du TTC avec taux standard
+L'application hôte appelle `totalTtc()` avec des lignes où chaque ligne peut spécifier son propre taux TGC, ou utiliser le défaut (taux standard 16 %).
 
 ```php
-$totalTTC = $calc->totalTtc($lignes, false);  // → 29000 F CFP
-// Calcul : 25000 × (1 + 0.16) = 29000
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000],  // Utilise TGC_STANDARD par défaut
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16],  // Explicitement standard
+];
+$totalTTC = $calc->totalTtc($lignes);  // → 23200 F CFP
+// Calcul : (10000×1.16) + (10000×1.16) = 23200
 ```
 
 **Règles appliquées** : R3, R5  
-**Preuve** : test `testTotalTtcTauxStandard` retourne `11600` pour HT=10000
+**Preuve** : test `testTotalTtcTauxStandard` retourne `11600` pour HT=10000 à 16 %
 
-### Cas 3 : Calcul du TTC au taux réduit
-L'application hôte appelle `totalTtc()` avec le paramètre `$tauxReduit = true`.
+### Cas 3 : Calcul du TTC avec taux réduit
+L'application hôte appelle `totalTtc()` avec une ligne spécifiant le taux réduit via la clé `taux`.
 
 ```php
-$totalTTC = $calc->totalTtc($lignes, true);  // → 26250 F CFP
-// Calcul : 25000 × (1 + 0.05) = 26250
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05],  // Taux réduit
+];
+$totalTTC = $calc->totalTtc($lignes);  // → 10500 F CFP
+// Calcul : 10000 × 1.05 = 10500
 ```
 
 **Règles appliquées** : R4, R5  
-**Preuve** : test `testTotalTtcTauxReduit` retourne `10500` pour HT=10000
+**Preuve** : test `testTotalTtcTauxReduit` retourne `10500` pour HT=10000 à 5 %
 
-### Limitation : Taux TGC unique
+### Support : Taux mixte sur la même facture
 
-La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seul taux à l'ensemble de la facture. Une facture comportant des lignes à taux standard (16 %) et d'autres à taux réduit (5 %) ne peut pas être calculée en un seul appel.
+La signature `totalTtc(array $lignes)` accepte à présent que chaque ligne porte son propre taux TGC via la clé optionnelle `taux`. Une facture comportant des lignes à 16 % et d'autres à 5 % peut désormais être calculée en un seul appel.
 
-**État** : c'est une **limitation d'API, pas un défaut** — elle était intentionnelle à la conception du pilote.
+```php
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16],  // Standard
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05],  // Réduit
+];
+$totalTTC = $calc->totalTtc($lignes);  // → 21500 F CFP
+// Calcul : (10000 × 1.16) + (10000 × 1.05) = 11600 + 10500 = 22100
+```
+
+**État** : cette **capacité de taux par ligne est nouvelle** — elle remplace l'ancienne API booléenne `$tauxReduit`.
 
 ## Règles métier
 
@@ -137,12 +156,12 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Exemple** : HT=10000 F CFP, taux=5 % → `10000 × 1.05 = 10500 F CFP` exact (test `testTotalTtcTauxReduit`)
 - **HYPOTHÈSE de conformité** : le mode d'arrondi PHP par défaut est conforme à la réglementation TGC CFP (non sourcé dans le dépôt)
 
-#### R6 — Taux unique par facture
-- **Énoncé** : une facture ne peut appliquer qu'un seul taux TGC (standard ou réduit) — impossible de panacher sur la même facture
-- **Implémentation** : paramètre booléen unique `bool $tauxReduit`, appliqué à tout le total HT
-- **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) doit être segmentée et calculée en deux appels
-- **Preuve** : `src/InvoiceCalculator.php:35` (signature `totalTtc`)
-- **État** : c'est une limitation d'API, appropriée au scope pilote ; à clarifier pour une évolution production
+#### R6 — Taux par ligne (support des taux mixtes)
+- **Énoncé** : chaque ligne de facture peut spécifier son propre taux TGC via la clé optionnelle `taux`
+- **Implémentation** : accès `$ligne['taux'] ?? self::TGC_STANDARD` — défaut au taux standard si absent
+- **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) peut être calculée en un seul appel
+- **Preuve** : `src/InvoiceCalculator.php:48` (taux par ligne)
+- **État** : capacité nouvelle (depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426) ; remplace l'ancienne API booléenne
 
 #### R7 — Pas de remise, pas d'avoir
 - **Énoncé** : la bibliothèque calcule un montant brut sans possibilité de remise ou d'avoir
@@ -153,6 +172,19 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Énoncé** : les prix sont exprimés en francs CFP entiers — pas de centimes ni de sous-unité
 - **Preuve** : tous les tests utilisent des entiers (`25000`, `10000`, `5000`), docblock `src/InvoiceCalculator.php:15`
 - **Impact comptable** : tout arrondage se fait au franc entier
+
+#### R13 — Validation des clés de ligne
+- **Énoncé** : chaque ligne doit contenir au minimum les clés `quantite` et `prixUnitaire` — l'absence levée `\InvalidArgumentException`
+- **Implémentation** : vérification `!isset($ligne['quantite'], $ligne['prixUnitaire'])` avant accès
+- **Preuve** : `src/InvoiceCalculator.php:23, 45`
+- **Impact dev** : l'application hôte doit garantir la structure des lignes ou gérer l'exception
+
+#### R14 — Détection du débordement d'entier (OverflowException)
+- **Énoncé** : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN`, une `\OverflowException` est levée au lieu de retourner une valeur erronée silencieusement
+- **Implémentation** : vérification post-arrondi `if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) { throw ... }`
+- **Preuve** : `src/InvoiceCalculator.php:29-30, 52-53`
+- **Impact dev** : les appelants doivent prévoir le traitement de `\OverflowException` pour les grandes factures
+- **Contexte** : résout le problème d'arrondi silencieux décrit en SHIAAAAAAAAAAAAAAAAAAAAAAAA-421
 
 ### Domaine : Journalisation applicative
 
@@ -191,13 +223,17 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 **Format de ligne de facture** :
 ```php
 [
-    'label'        => string,    // Libellé du produit/service
-    'quantite'     => int,        // Nombre d'unités
-    'prixUnitaire' => int         // Prix en francs CFP par unité
+    'label'        => string,    // Libellé du produit/service (optionnel, ignoré)
+    'quantite'     => int,       // ⚠️ REQUIS — Nombre d'unités
+    'prixUnitaire' => int,       // ⚠️ REQUIS — Prix en francs CFP par unité
+    'taux'         => float      // Optionnel — Taux TGC de la ligne (défaut : TGC_STANDARD = 0.16)
 ]
 ```
 
-**Aucune autre clé n'est reconnue** — toute clé supplémentaire sera ignorée ; l'absence d'une clé causera une erreur à l'exécution.
+**Règles** :
+- Les clés `quantite` et `prixUnitaire` sont **obligatoires** — l'absence lève `\InvalidArgumentException`
+- La clé `taux` est **optionnelle** — si absente, défaut au taux standard (0.16)
+- Toute clé supplémentaire (autre que les 4 ci-dessus) sera ignorée
 
 ### Constantes de domaine
 
@@ -224,15 +260,15 @@ Ces constantes sont l'**unique point source de vérité** pour les deux taux uti
 
 ### Clé manquante dans une ligne
 
-**Observation** : si une ligne n'a pas la clé `quantite` ou `prixUnitaire`, l'accès direct causera une erreur.
+**Observation** : si une ligne n'a pas la clé `quantite` ou `prixUnitaire`, une `\InvalidArgumentException` est levée.
 
-**Comportement** : PHP génère un avertissement (`Warning: Undefined array key "quantite"`) et retourne `null`, qui se coerce en 0 dans le calcul.
+**Comportement** : vérification préalable `!isset($ligne['quantite'], $ligne['prixUnitaire'])` avant accès (ligne 23, 45).
 
-**Conséquence** : le calcul produit un résultat incorrect (HT inférieur au réel) sans signal d'erreur explicite.
+**Conséquence** : l'application hôte doit gérer l'exception ou garantir la structure des entrées.
 
-**Preuve** : aucun test ne couvre ce cas ; `src/InvoiceCalculator.php:22` accède directement sans validation
+**Preuve** : `src/InvoiceCalculator.php:23-24, 45-46` ; implémentation explicite de la validation
 
-**État** : `HYPOTHÈSE` — ce comportement runtime n'a pas été observé à l'exécution dans ce run.
+**État** : ✅ RÉSOLU — le code valide à présent les clés requis et lève une exception explicite (depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426).
 
 ### Valeur négative (quantité ou prix)
 
@@ -248,7 +284,19 @@ Ces constantes sont l'**unique point source de vérité** pour les deux taux uti
 
 ### Taux TGC mixte sur la même facture
 
-Voir **R6** ci-dessus — limitation d'API, pas un cas à couvrir.
+Voir **R6** ci-dessus — cette capacité est à présent supportée via la clé `taux` par ligne.
+
+### Débordement d'entier (PHP_INT_MAX / PHP_INT_MIN)
+
+**Observation** : si le total calculé dépasse `PHP_INT_MAX` ou descend sous `PHP_INT_MIN`, une `\OverflowException` est levée.
+
+**Comportement** : vérification post-arrondi `if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) { throw ... }` (lignes 29-30, 52-53).
+
+**Conséquence** : l'application hôte doit gérer l'exception pour les calculs susceptibles de générer des montants très élevés.
+
+**Preuve** : `src/InvoiceCalculator.php:29-31, 52-54` ; tests `testOverflowHorsTaxe`, `testOverflowTtc`
+
+**État** : ✅ RÉSOLU — le code détecte et signale à présent le débordement au lieu de retourner une valeur erronée (depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426, résout SHIAAAAAAAAAAAAAAAAAAAAAAAA-421).
 
 ## Critères d'acceptation (pivot de livraison)
 
@@ -266,10 +314,17 @@ La bibliothèque **ne garantit pas** :
 - Que le mode d'arrondi PHP par défaut est conforme à la réglementation (à valider avec le board)
 - Que le logger Monolog reste accessible ou que sa version ne cassera pas lors de montées de version
 - Que la facture vide retourne 0 F CFP par design plutôt que par défaut du langage (à clarifier si besoin)
-- Que les factures mixtes (taux multiples) soient supportées — elles ne le sont pas par l'API
+
+## Ce qui est à présent garanti
+
+✅ **Détection du débordement** : les totaux qui dépassent `PHP_INT_MAX` ou descendent sous `PHP_INT_MIN` lèvent une exception explicite `\OverflowException` au lieu de retourner silencieusement une valeur erronée.
+
+✅ **Validation des lignes** : chaque ligne est vérifiée pour la présence de `quantite` et `prixUnitaire` ; l'absence lève une `\InvalidArgumentException` explicite.
+
+✅ **Support des taux mixtes** : chaque ligne peut spécifier son propre taux TGC via la clé `taux`, permettant les factures à taux multiples en un seul appel.
 
 ---
 
-**Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30`  
-**Date de dernière vérification** : 2026-08-04
+**Branche** : `main` (issue: SHIAAAAAAAAAAAAAAAAAAAAAAAA-426)  
+**SHA référence** : `e5a7644` (fix: lever OverflowException si totalHorsTaxe/totalTtc dépasse PHP_INT_MAX)  
+**Date de dernière vérification** : 2026-08-06

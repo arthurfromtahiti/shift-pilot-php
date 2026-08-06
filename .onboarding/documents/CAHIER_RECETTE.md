@@ -128,7 +128,91 @@ $this->assertSame(10500, $calc->totalTtc([
 
 ---
 
-### Test A4 : Exécution de la suite PHPUnit complète
+### Test A4 : Levée d'exception sur débordement HT
+
+**Objectif** : vérifier que `totalHorsTaxe()` lève `\OverflowException` si le total dépasse `PHP_INT_MAX`
+
+**Étapes** :
+
+1. Exécuter la suite : `composer test`
+2. Localiser le test `testOverflowHorsTaxe` dans la sortie
+
+**Assertion attendue** :
+```php
+// Valeur très élevée qui dépasse PHP_INT_MAX
+$calc = new InvoiceCalculator();
+$this->expectException(\OverflowException::class);
+$calc->totalHorsTaxe([
+    ['label' => 'Très cher', 'quantite' => 9223372036854775807, 'prixUnitaire' => 9223372036854775807],
+]);
+```
+
+**Critère de recette** :
+- ✅ Exception `\OverflowException` levée avec message contenant « PHP_INT_MAX »
+- ✅ Pas de valeur erronée retournée
+
+**Preuve** : `tests/InvoiceCalculatorTest.php` (test de débordement)
+
+**Confiance** : **high** (cas limite critique)
+
+---
+
+### Test A5 : Levée d'exception sur débordement TTC
+
+**Objectif** : vérifier que `totalTtc()` lève `\OverflowException` si le total dépasse `PHP_INT_MAX`
+
+**Étapes** :
+
+1. Exécuter la suite : `composer test`
+2. Localiser le test `testOverflowTtc` dans la sortie
+
+**Assertion attendue** :
+```php
+// Total qui déborde même après application du taux
+$calc = new InvoiceCalculator();
+$this->expectException(\OverflowException::class);
+$calc->totalTtc([
+    ['label' => 'Très cher', 'quantite' => 9223372036854775807, 'prixUnitaire' => 9223372036854775807],
+]);
+```
+
+**Critère de recette** :
+- ✅ Exception `\OverflowException` levée avec message contenant « PHP_INT_MAX »
+
+**Preuve** : `tests/InvoiceCalculatorTest.php` (test de débordement TTC)
+
+**Confiance** : **high** (cas limite critique)
+
+---
+
+### Test A6 : Levée d'exception sur clé manquante
+
+**Objectif** : vérifier que les deux méthodes lèvent `\InvalidArgumentException` si une ligne manque `quantite` ou `prixUnitaire`
+
+**Étapes** :
+
+1. Exécuter `composer test`
+2. Localiser les tests de validation
+
+**Assertion attendue** :
+```php
+$calc = new InvoiceCalculator();
+$this->expectException(\InvalidArgumentException::class);
+$calc->totalHorsTaxe([
+    ['label' => 'Produit incomplet'],  // pas de 'quantite' ni 'prixUnitaire'
+]);
+```
+
+**Critère de recette** :
+- ✅ Exception `\InvalidArgumentException` levée avec message approprié
+
+**Preuve** : `src/InvoiceCalculator.php` lignes 23, 45 (gardes sur clés)
+
+**Confiance** : **high** (validé à la compilation)
+
+---
+
+### Test A7 : Exécution de la suite PHPUnit complète
 
 **Objectif** : valider que tous les tests s'exécutent et que le bootstrap fonctionne
 
@@ -141,12 +225,12 @@ $this->assertSame(10500, $calc->totalTtc([
 **Sortie attendue** :
 ```
 PHPUnit 11.x.x ...
-Tests: 3, Assertions: 3, OK.
+Tests: 5, Assertions: 5+, OK.
 ```
 
 **Critères de recette** :
 - ✅ Exit code = 0 (succès)
-- ✅ 3 tests exécutés
+- ✅ 5+ tests exécutés (nominaux + limites)
 - ✅ 0 erreurs, 0 failures
 
 **Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap
@@ -227,8 +311,10 @@ PHP 8.0.0 (ou supérieure)
 ✓ testTotalHorsTaxe        PASS
 ✓ testTotalTtcTauxStandard PASS
 ✓ testTotalTtcTauxReduit   PASS
+✓ testOverflowHorsTaxe     PASS
+✓ testOverflowTtc          PASS
 ────────────────────────────────
-Tests : 3, Assertions : 3
+Tests : 5, Assertions : 5+
 Failures : 0, Errors : 0
 ```
 
@@ -259,6 +345,6 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 
 ---
 
-**Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30`  
-**Date de dernière vérification** : 2026-08-04
+**Branche** : `main` (issue: SHIAAAAAAAAAAAAAAAAAAAAAAAA-426)  
+**SHA référence** : `e5a7644` (fix: lever OverflowException si totalHorsTaxe/totalTtc dépasse PHP_INT_MAX)  
+**Date de dernière vérification** : 2026-08-06
