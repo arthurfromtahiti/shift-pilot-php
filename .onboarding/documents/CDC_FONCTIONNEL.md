@@ -295,7 +295,7 @@ Voir **R6** ci-dessus — cette capacité est à présent supportée via la clé
 
 **Conséquence** : l'application hôte doit gérer l'exception pour les calculs susceptibles de générer des montants très élevés.
 
-**Preuve** : `src/InvoiceCalculator.php:29-31, 52-54` ; tests `testOverflowHorsTaxe`, `testOverflowTtc`
+**Preuve** : `src/InvoiceCalculator.php:29-31, 52-54` ; tests `testTotalHorsTaxeLèveOverflowExceptionSiDépassementPhpIntMax`, `testTotalTtcLèveOverflowExceptionSiDépassementPhpIntMax` (lignes 89, 96)
 
 **État** : ✅ RÉSOLU — le code détecte et signale à présent le débordement au lieu de retourner une valeur erronée (depuis fix/SHIAAAAAAAAAAAAAAAAAAAAAAAA-426, résout SHIAAAAAAAAAAAAAAAAAAAAAAAA-421).
 

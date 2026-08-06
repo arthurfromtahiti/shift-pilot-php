@@ -206,9 +206,9 @@ $calc->totalHorsTaxe([
 **Critère de recette** :
 - ✅ Exception `\InvalidArgumentException` levée avec message approprié
 
-**Preuve** : `src/InvoiceCalculator.php` lignes 23, 45 (gardes sur clés)
+**Preuve** : `tests/InvoiceCalculatorTest.php` lignes 54–86 (5 tests couvrant ce cas)
 
-**Confiance** : **high** (validé à la compilation)
+**Confiance** : **high** (validé à l'exécution — tests dont les noms commencent par `testTotalHorsTaxeLigneS*Exception` et `testTotalTtcLigneS*Exception`)
 
 ---
 
