@@ -421,6 +421,6 @@ Application hôte
 ---
 
 **Branche** : `main`  
-**SHA référence** : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant)  
+**SHA référence** : `9c9ac54` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

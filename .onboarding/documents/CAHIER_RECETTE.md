@@ -24,7 +24,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `a3bc97a` (HEAD courant)
+- SHA cible : `9c9ac54` (HEAD courant)
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -440,7 +440,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : `a3bc97a` (HEAD courant)  
+**SHA référence** : `9c9ac54` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : TESTING_AUDIT.md  
 **Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)

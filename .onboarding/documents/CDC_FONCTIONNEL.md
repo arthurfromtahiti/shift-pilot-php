@@ -133,8 +133,8 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 ### Domaine : Facturation TGC
 
 #### R1 — Ligne de facture
-- **Énoncé** : une ligne de facture contient au minimum une quantité et un prix unitaire
-- **Format** : tableau associatif PHP avec au minimum les clés `quantite: int, prixUnitaire: int` ; la clé `label` est optionnelle et ignorée ; la clé `taux` est optionnelle (défaut `TGC_STANDARD` 0.16)
+- **Énoncé** : une ligne de facture exige au minimum les clés `quantite` et `prixUnitaire`
+- **Format** : tableau associatif PHP avec les clés requises `quantite: int, prixUnitaire: int` ; les clés `label` et `taux` sont optionnelles (ignorée pour label, défaut `TGC_STANDARD` 0.16 pour taux)
 - **Validation** : validation stricte — accès aux clés `quantite` et `prixUnitaire` avec garde `\InvalidArgumentException` si absentes
 - **Preuve** : `src/InvoiceCalculator.php:23-25` valide `quantite` et `prixUnitaire`, lève `\InvalidArgumentException` si absentes
 - **Impact sur dev** : les clés obligatoires doivent être présentes ; une ligne mal formée lève une exception, ne produit pas un calcul incorrect
@@ -211,13 +211,14 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 - **Preuve** : `src/AppLogger.php:15-18`
 - **Impact opérationnel** : permettre à l'application hôte de rediriger les logs selon son infrastructure (fichier, syslog, API, etc.)
 
-#### R12 — Aucun traitement du message en sortie
-- **Énoncé** : la bibliothèque transmet les messages directement à Monolog sans filtrage ni enrichissement supplémentaire
+#### R12 — Transmission sans traitement supplémentaire
+- **Énoncé** : `AppLogger` transmet les messages directement à Monolog via les méthodes `info()` et `error()`, sans filtrage ni enrichissement
 - **Implémentation** : `src/AppLogger.php:23,28` effectue des appels directs à `$this->logger->info()` / `error()` avec le contexte fourni (clé `total_ttc` pour émission, clé `detail` pour erreur)
-- **API** : utilise Monolog 3.x (méthodes `info()` et `error()` modernes)
-- **Limitation** : l'écriture effective des logs (destination, formatage, niveau de sévérité) dépend entièrement de la configuration des handlers Monolog côté application hôte — ce dépôt ne configure que le canal et le flux par défaut
-- **Preuve** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`)
-- **Impact dev** : le formatage et la persistance des logs relèvent de la configuration Monolog côté application hôte ; `AppLogger` ne les contrôle pas
+- **API** : utilise Monolog 3.x (méthodes `info()` et `error()` modernes, migrées depuis Monolog 1.x en 2026-08-08)
+- **Portée garantie** : `AppLogger` garantit que l'appel à `$this->logger->info()` / `error()` sera exécuté sans erreur au niveau du code de cette classe
+- **Portée non garantie** : l'écriture effective des logs (destination fichier, syslog, API) dépend de la configuration des handlers Monolog côté application hôte — ce dépôt configure seulement le canal par défaut (`facturation`) et le flux (`php://stderr`) ; le formatage, la sérialisation et la persistance relèvent de la configuration externe, non observés dans ce dépôt
+- **Preuve** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`) ; absence d'orchestrateur dans le dépôt consommant les logs
+- **Impact dev** : le formatage, la sérialisation et la persistance des logs relèvent de la configuration Monolog côté application hôte ; `AppLogger` n'en contrôle pas le résultat final
 
 ## Données
 
@@ -228,15 +229,15 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 **Format de ligne de facture** :
 ```php
 [
-    'label'        => string,    // Libellé du produit/service (optionnel, ignoré)
     'quantite'     => int,        // Nombre d'unités (REQUIS)
     'prixUnitaire' => int,        // Prix en francs CFP par unité (REQUIS)
-    'taux'         => float       // Taux TGC appliqué (0.16, 0.05, autre ; optionnel, défaut TGC_STANDARD 0.16)
+    'label'        => string,     // Libellé du produit/service (optionnel, ignoré par le calcul)
+    'taux'         => float       // Taux TGC appliqué (0.16, 0.05, ou autre ; optionnel, défaut TGC_STANDARD 0.16)
 ]
 ```
 
 **Clés obligatoires** : `quantite`, `prixUnitaire`  
-**Clés optionnelles** : `label` (ignorée), `taux` (défaut 0.16 si absente)  
+**Clés optionnelles** : `label` (stockée mais ignorée par le calcul), `taux` (défaut 0.16 si absente)  
 **Clés supplémentaires** : toute autre clé sera ignorée ; l'absence de clé obligatoire causera une `\InvalidArgumentException` à l'exécution.
 
 ### Constantes de domaine
@@ -307,14 +308,15 @@ Un appel à une fonction de la bibliothèque est **fonctionnellement correct** s
 La bibliothèque **ne garantit pas** :
 - Que les taux TGC (16 %, 5 %) sont conformes à la réglementation polynésienne actuelle (à valider avec le board)
 - Que le mode d'arrondi `PHP_ROUND_HALF_UP` (appliqué par `round()` sans argument) est conforme à la réglementation TGC CFP (à valider avec le board/autorité fiscale)
-- Que le logger Monolog 3.x reste accessible ou que sa version majeure suivante ne cassera pas l'API `info()`/`error()`
+- Que le logger Monolog 3.10.0 sera maintenu indéfiniment ou que sa version majeure suivante ne cassera pas l'API `info()`/`error()` (à valider avec la gestion de dépendances Composer)
 - Que la facture vide retourne 0 F CFP par design plutôt que par défaut du langage (à clarifier si besoin)
 - Que la plage du taux fourni par ligne (par ex. `taux: -0.5` ou `taux: 2.0`) produise un résultat valide — toute valeur est acceptée sans validation
 - Que le comportement du taux par défaut silencieux (16 % si absent) ne causera pas d'erreur de facturation chez le consommateur — c'est un risque documenté
+- Que les logs écrits via `AppLogger` seront effectivement persistés ou formatés — cette responsabilité relève de la configuration Monolog côté application hôte
 
 ---
 
 **Branche** : `main`  
-**SHA référence** : `a3bc97a` (HEAD courant, documents de référence mis à jour)  
+**SHA référence** : `9c9ac54` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

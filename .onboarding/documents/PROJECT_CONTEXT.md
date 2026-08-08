@@ -83,17 +83,18 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 - **Taux par ligne** : limitation « taux unique » résolue — factures mixtes testées (test `testTotalTtcTauxMixte`, SHA 7ef6351)
 - **Monolog 3.x** : migration effectuée, `composer.json:8` déclare `^3.0`, API mises à jour (`info()` / `error()`), `composer.lock` versionné et verrouille `3.10.0`
 - Aucune couche HTTP/ORM/persistance : vérifié sur l'arbre complet du dépôt
-- Dépendances explicites et verrouillées : Monolog 3.10.0, PHPUnit 10.5 (depuis 2026-08-08)
+- Dépendances explicites et verrouillées : Monolog 3.10.0, PHPUnit 10.5 (depuis 2026-08-08) ; composer.lock présent et versionné
 
-**Confiance niveau** : **high** sur le code source, son implémentation, et la stabilité des dépendances (composer.lock présent).
+**Confiance niveau** : **high** sur le code source, son implémentation, et la stabilité des dépendances (composer.lock versionné et verrouillant Monolog 3.10.0).
 
 ### Ce qu'on sait par hypothèse (`HYPOTHÈSE`)
 
 - Taux TGC (16 % et 5 %) : contexte externe, supposé correspondre aux taux polynésiens. Aucune source légale dans le dépôt — à valider par le board métier
 - Mode d'arrondi : `round()` appelé sans argument explicite dans `src/InvoiceCalculator.php:28,51` — utiliserait `PHP_ROUND_HALF_UP` par défaut **selon le comportement PHP standard**, non contrôlé explicitement par le code. Conformité avec la réglementation CFP non sourcée dans le dépôt — à valider auprès de l'autorité fiscale polynésienne
 - Taux par défaut silencieux : l'absence de clé `taux` replie sur `TGC_STANDARD` (16 %) sans signal — risque de facturation incorrecte chez un consommateur qui omet `taux` pour une ligne à 5 % (documenté dans le FUNCTIONAL_AUDIT)
+- Monolog 1.x obsolescence : possibilité que Monolog 1.x soit retiré ou que 2.x/3.x cassent l'API — à valider avec Monolog release notes et gestion de dépendance Composer auprès de l'équipe ops
 
-**Confiance niveau** : **medium** sur les intentions métier et la conformité réglementaire ; **high** sur la stabilité de la dépendance Monolog 3.x (verrouillée dans `composer.lock`).
+**Confiance niveau** : **medium** sur les intentions métier et la conformité réglementaire ; **high** sur la stabilité actuelle de la dépendance Monolog 3.10.0 (verrouillée dans `composer.lock`).
 
 ### Ce qu'on ignore (`INCONNU`)
 
@@ -130,7 +131,7 @@ Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences docume
 
 1. Ce projet est un **pilote volontairement minimal** — ne pas l'étendre avec du code de production absent
 2. Les **taux TGC** (16 %, 5 %) sont une décision métier à valider avec le board ; les constantes les rendent localisables mais non vérifiées au-delà du code
-3. La dépendance **Monolog 3.x** (migée depuis 1.x en 2026-08-08) est protégée par `composer.lock` verrouillant `3.10.0` ; toute montée de version mineure/majeure requiert une vérification de compatibilité de l'API (`info()` / `error()`)
+3. La dépendance **Monolog 3.x** (migrée de 1.x en 2026-08-08) est verrouillée via `composer.lock` à `3.10.0` ; toute montée de version mineure/majeure requiert vérification de compatibilité de l'API (`info()` / `error()`) ; l'obsolescence d'une version majeure reste une hypothèse externe à valider avec la gestion de dépendances (Composer)
 4. **Incohérences documentaires détectées** : `README.md` annonce PHP 8.0 tandis que `composer.json` requiert 8.1 ; `README.md` prétend que `composer.lock` n'est pas versionné alors qu'il est présent. À corriger en priorité.
 5. La **capacité taux mixte** (lignes à 16 % et 5 % sur la même facture) est désormais implémentée et testée — limitation d'origine levée
 6. Aucune **intégration interne** entre `InvoiceCalculator` et `AppLogger` ne doit être ajoutée dans ce dépôt : c'est l'affaire de l'application hôte
@@ -139,6 +140,6 @@ Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences docume
 ---
 
 **Branche** : `main`  
-**SHA référence** : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant)  
+**SHA référence** : `9c9ac54` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md
