@@ -315,6 +315,6 @@ La bibliothèque **ne garantit pas** :
 ---
 
 **Branche** : `main`  
-**SHA référence** : `a3bc97a7556e9f959c06a17c7a3b8c27a6e8c1dc` (HEAD courant, documents de référence mis à jour)  
+**SHA référence** : `a3bc97a` (HEAD courant, documents de référence mis à jour)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md
