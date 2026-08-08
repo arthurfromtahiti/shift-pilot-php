@@ -11,10 +11,10 @@
 - **Acteurs** : code appelant PHP, `App\InvoiceCalculator`
 - **Criticité** : Haute — seule fonction métier du dépôt ; sans ce calcul, la bibliothèque n'a pas de raison d'être
 - **Confiance** : medium (chemin nominal et cas d'exception clés couverts ; cas limites non testés : valeurs négatives, liste vide, taux arbitraires, différence d'arrondi par ligne vs arrondi unique — PHP absent de l'environnement, tests non exécutés, toutes les affirmations sont `VÉRIFIÉ_CODE`)
-- **Justification** : les deux méthodes publiques (`totalHorsTaxe`, `totalTtc`) ont été lues intégralement (`src/InvoiceCalculator.php`, 57 lignes) ; 12 tests PHPUnit lus dans `tests/InvoiceCalculatorTest.php`. Les tests couvrent les cas nominaux (taux standard, réduit, mixte, par défaut), les clés manquantes (4× `InvalidArgumentException`) et les débordements (2× `OverflowException`) — pas les valeurs négatives, la liste vide, les taux arbitraires ni la différence d'arrondi.
+- **Justification** : les deux méthodes publiques (`totalHorsTaxe`, `totalTtc`) ont été lues intégralement (`src/InvoiceCalculator.php`, 57 lignes) ; 12 tests PHPUnit lus dans `tests/InvoiceCalculatorTest.php`. Les tests couvrent les cas nominaux (taux standard, réduit, mixte, par défaut), les clés manquantes (5× `InvalidArgumentException`) et les débordements (2× `OverflowException`) — pas les valeurs négatives, la liste vide, les taux arbitraires ni la différence d'arrondi.
 
 ## Objectif
-Permettre à une application PHP de calculer le **total hors taxe** puis le **total toutes taxes comprises (TTC)** d'une facture composée de plusieurs lignes, en appliquant la **TGC** (taxe générale sur la consommation, Polynésie française). Chaque ligne porte son propre taux TGC (standard 16 % ou réduit 5 %) ; une même facture peut donc **mélanger des taux**. Les montants sont en **francs CFP entiers**. La bibliothèque ne persiste rien, ne génère aucun document : elle calcule et retourne.
+Permettre à une application PHP de calculer le **total hors taxe** puis le **total toutes taxes comprises (TTC)** d'une facture composée de plusieurs lignes, en appliquant la **TGC** (taxe générale sur la consommation, Polynésie française). Chaque ligne peut porter son propre taux TGC via la clé `taux` (le domaine définit deux constantes de référence : standard 16 % et réduit 5 %, mais le code accepte tout `float`) ; à défaut le taux standard s'applique. Une même facture peut donc **mélanger des taux**. Les montants sont en **francs CFP entiers**. La bibliothèque ne persiste rien, ne génère aucun document : elle calcule et retourne.
 
 ## Acteurs
 - **Application consommatrice** : code PHP tiers qui instancie `InvoiceCalculator` et lui fournit les lignes de facture
@@ -77,7 +77,7 @@ Aucune intégration externe explicite visible. Bibliothèque pure : pas d'appel 
 
 ## Preuves
 - `src/InvoiceCalculator.php` (lu intégralement, 57 lignes)
-- `tests/InvoiceCalculatorTest.php` (lu intégralement, 12 cas : `testTotalHorsTaxe` / `testTotalTtcTauxStandard` / `testTotalTtcTauxReduit` / `testTotalTtcTauxMixte` / `testTotalTtcSansTauxUtiliseTauxStandard` / 4× `Invalid­ArgumentException` / 2× `OverflowException`)
+- `tests/InvoiceCalculatorTest.php` (lu intégralement, 12 cas : `testTotalHorsTaxe` / `testTotalTtcTauxStandard` / `testTotalTtcTauxReduit` / `testTotalTtcTauxMixte` / `testTotalTtcSansTauxUtiliseTauxStandard` / 5× `InvalidArgumentException` / 2× `OverflowException`)
 - `composer.json` (structure du projet, version PHP)
 
 ## Réconciliation (run SHIAAAAAAAAAAAAAAAAAAAAAAAA-498, 2026-08-08, SHA `6d4f877`)
@@ -93,4 +93,4 @@ La version précédente de ce fichier documentait le code d'avant CLA-250 (taux 
 | Risques | « Clés manquantes : comportement non documenté » | Ce n'est plus un risque : `InvalidArgumentException` lève explicitement. Retiré des risques |
 | Risques | « Mélange de taux impossible » | Faux dans le code courant : le taux mixte est supporté par ligne et testé (`testTotalTtcTauxMixte`). Retiré |
 | Données — Ligne TTC | `{label, quantite, prixUnitaire}` seulement | Ajout de `taux?: float` (docblock `src/InvoiceCalculator.php:36`) |
-| Preuves — tests | 3 tests | 12 tests (ajout cas taux mixte, taux par défaut, 4× InvalidArgument, 2× Overflow) |
+| Preuves — tests | 3 tests | 12 tests (ajout cas taux mixte, taux par défaut, 5× InvalidArgument, 2× Overflow) |
