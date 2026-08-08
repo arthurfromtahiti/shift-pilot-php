@@ -13,8 +13,8 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 **Rôle** : instancie les deux classes publiques (`InvoiceCalculator`, `AppLogger`), construit les structures de facture, appelle le calcul et traite les résultats.
 
 **Capacités** :
-- Fournir une liste de lignes de facture (label, quantité, prix unitaire)
-- Appeler le calcul HT seul ou le calcul TTC avec sélection du taux
+- Fournir une liste de lignes de facture (quantité, prix unitaire obligatoires ; label optionnel et ignoré par le calcul)
+- Appeler le calcul HT seul ou le calcul TTC avec sélection du taux par ligne
 - Consulter les montants retournés (entiers en francs CFP)
 - Enregistrer les événements de facturation sur un logger configuré
 
@@ -133,11 +133,11 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 ### Domaine : Facturation TGC
 
 #### R1 — Ligne de facture
-- **Énoncé** : une ligne de facture exige au minimum les clés `quantite` et `prixUnitaire`
-- **Format** : tableau associatif PHP avec les clés requises `quantite: int, prixUnitaire: int` ; les clés `label` et `taux` sont optionnelles (ignorée pour label, défaut `TGC_STANDARD` 0.16 pour taux)
-- **Validation** : validation stricte — accès aux clés `quantite` et `prixUnitaire` avec garde `\InvalidArgumentException` si absentes
-- **Preuve** : `src/InvoiceCalculator.php:23-25` valide `quantite` et `prixUnitaire`, lève `\InvalidArgumentException` si absentes
-- **Impact sur dev** : les clés obligatoires doivent être présentes ; une ligne mal formée lève une exception, ne produit pas un calcul incorrect
+- **Énoncé** : une ligne de facture exige au minimum les clés `quantite` et `prixUnitaire` ; la clé `label` est optionnelle et ignorée par le calcul
+- **Format** : tableau associatif PHP avec les clés requises `quantite: int, prixUnitaire: int` ; les clés `label` et `taux` sont optionnelles (label ignorée dans le calcul, taux défaut `TGC_STANDARD` 0.16)
+- **Validation** : validation stricte — accès aux clés `quantite` et `prixUnitaire` avec garde `\InvalidArgumentException` si absentes. Clé `label` est lue à titre documentaire uniquement, ne provoque pas d'erreur si absente
+- **Preuve** : `src/InvoiceCalculator.php:23-25` valide `quantite` et `prixUnitaire`, lève `\InvalidArgumentException` si absentes ; docblock `src/InvoiceCalculator.php:15` liste `label` mais le code ne le consomme pas ligne 26 (seule accumulation `quantite × prixUnitaire`)
+- **Impact sur dev** : les deux clés obligatoires doivent être présentes ; une ligne mal formée lève une exception. `label` peut être omis sans conséquence
 
 #### R2 — Montant hors taxe (HT)
 - **Énoncé** : le montant HT d'une facture est la somme des produits quantité × prix unitaire pour chaque ligne
@@ -158,7 +158,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 - **Constante** : `TGC_REDUIT = 0.05` (`src/InvoiceCalculator.php:12`)
 - **Condition d'application** : spécification explicite `taux: 0.05` dans la ligne
 - **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit` et `testTotalTtcTauxMixte`
-- **HYPOTHÈSE métier** : ce taux est destiné à certains produits (ex. première nécessité) selon la réglementation TGC polynésienne (non sourcé dans le dépôt)
+- **HYPOTHÈSE métier** : ce taux est destiné à certains produits selon la réglementation TGC polynésienne ; l'association avec des catégories comme « première nécessité » relève de la politique fiscale externe, non sourcée dans le dépôt
 
 #### R5 — Montant TTC et arrondi
 - **Énoncé** : le montant TTC est calculé en appliquant le taux TGC à chaque ligne individuellement, puis en accumulant les résultats et en arrondissant une seule fois au franc CFP entier
@@ -214,11 +214,16 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 #### R12 — Transmission sans traitement supplémentaire
 - **Énoncé** : `AppLogger` transmet les messages directement à Monolog via les méthodes `info()` et `error()`, sans filtrage ni enrichissement
 - **Implémentation** : `src/AppLogger.php:23,28` effectue des appels directs à `$this->logger->info()` / `error()` avec le contexte fourni (clé `total_ttc` pour émission, clé `detail` pour erreur)
-- **API** : utilise Monolog 3.x (méthodes `info()` et `error()` modernes, migrées depuis Monolog 1.x en 2026-08-08)
-- **Portée garantie** : `AppLogger` garantit que l'appel à `$this->logger->info()` / `error()` sera exécuté sans erreur au niveau du code de cette classe
-- **Portée non garantie** : l'écriture effective des logs (destination fichier, syslog, API) dépend de la configuration des handlers Monolog côté application hôte — ce dépôt configure seulement le canal par défaut (`facturation`) et le flux (`php://stderr`) ; le formatage, la sérialisation et la persistance relèvent de la configuration externe, non observés dans ce dépôt
-- **Preuve** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`) ; absence d'orchestrateur dans le dépôt consommant les logs
-- **Impact dev** : le formatage, la sérialisation et la persistance des logs relèvent de la configuration Monolog côté application hôte ; `AppLogger` n'en contrôle pas le résultat final
+- **API** : utilise Monolog 3.x (méthodes `info()` et `error()` modernes)
+- **Portée observée au niveau du code** : 
+  - ✅ `AppLogger` appelle `$this->logger->info()` / `error()` sans levée d'exception au moment du code `src/AppLogger.php:23,28`
+- **Portée non garantie — dépend de la configuration Monolog externe** : 
+  - L'écriture effective des logs vers une destination (fichier, syslog, API) dépend de la configuration des handlers Monolog côté application hôte
+  - Le formatage et la sérialisation des messages relèvent de la configuration Monolog, non observés dans ce dépôt
+  - L'absence d'erreur lors de l'appel à `info()` / `error()` ne garantit pas que le message sera effectivement écrit ou persisté
+  - Le comportement du handler (errors lors de l'écriture, gestion des permissions, formatage) relève entièrement de Monolog et de sa configuration externe
+- **Preuve** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`) ; absence de test pour `AppLogger` dans ce dépôt ; pas d'observation d'exécution runtime
+- **Impact dev** : le résultat final (présence du log en sortie, son format, sa destination) relève de la configuration Monolog côté application hôte ; `AppLogger` n'en contrôle que la transmission jusqu'à Monolog
 
 ## Données
 
@@ -298,25 +303,29 @@ Un appel à une fonction de la bibliothèque est **fonctionnellement correct** s
 1. **Calcul HT** : `totalHorsTaxe(...)` retourne la somme exacte de tous les produits `quantite × prixUnitaire`
 2. **Calcul TTC** : `totalTtc(...)` retourne `(int) round( Σ(quantite × prixUnitaire × (1 + taux_par_ligne)) )` où chaque ligne peut spécifier son propre taux ou replie sur `TGC_STANDARD`
 3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` lèvent `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent, `\OverflowException` si le résultat dépasse `PHP_INT_MAX`
-4. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel avec accumulation sans arrondi intermédiaire
-5. **Journalisation — signature** : `factureEmise(int $totalTTC): void` et `erreurCalcul(string $message): void` existent et peuvent être appelées sans lever d'exception au niveau du code de cette classe
-6. **Journalisation — intégration** : `AppLogger` transmet les événements à Monolog 3.x via les méthodes `info()` et `error()` ; l'écriture effective (destination, sérialisation, formatage) dépend de la configuration des handlers Monolog côté application hôte et n'est pas garantie par cette classe
-7. **Arrondi** : l'arrondi final utilise `round()` sans argument explicite de mode — applique `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
+4. **Structure de ligne** : clé `label` optionnelle et ignorée par le calcul ; clé `taux` optionnelle pour chaque ligne, repli sur `TGC_STANDARD` si absente
+5. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel avec accumulation sans arrondi intermédiaire
+6. **Journalisation — portée du code** : `factureEmise(int $totalTTC): void` et `erreurCalcul(string $message): void` existent et exécutent l'appel à `$this->logger->info()` / `error()` sans lever d'exception au niveau `src/AppLogger.php` (vérifié statiquement ; exécution runtime non observée)
+7. **Journalisation — résultat final dépend de Monolog externe** : l'écriture effective des logs (destination fichier, syslog, formatage, sérialisation, persistance, gestion d'erreurs du handler) dépend entièrement de la configuration des handlers Monolog côté application hôte ; ce dépôt ne contrôle que la transmission du message jusqu'à Monolog
+8. **Arrondi** : l'arrondi final utilise `round()` sans argument explicite de mode — applique `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
 
 ## Limites de garantie
 
 La bibliothèque **ne garantit pas** :
 - Que les taux TGC (16 %, 5 %) sont conformes à la réglementation polynésienne actuelle (à valider avec le board)
 - Que le mode d'arrondi `PHP_ROUND_HALF_UP` (appliqué par `round()` sans argument) est conforme à la réglementation TGC CFP (à valider avec le board/autorité fiscale)
-- Que le logger Monolog 3.10.0 sera maintenu indéfiniment ou que sa version majeure suivante ne cassera pas l'API `info()`/`error()` (à valider avec la gestion de dépendances Composer)
 - Que la facture vide retourne 0 F CFP par design plutôt que par défaut du langage (à clarifier si besoin)
 - Que la plage du taux fourni par ligne (par ex. `taux: -0.5` ou `taux: 2.0`) produise un résultat valide — toute valeur est acceptée sans validation
 - Que le comportement du taux par défaut silencieux (16 % si absent) ne causera pas d'erreur de facturation chez le consommateur — c'est un risque documenté
-- Que les logs écrits via `AppLogger` seront effectivement persistés ou formatés — cette responsabilité relève de la configuration Monolog côté application hôte
+
+**Concernant Monolog** :
+- L'écriture effective des logs sur stderr, fichier, ou autre destination dépend entièrement de la configuration des handlers Monolog côté application hôte (formatage, sérialisation, persistance, destination, gestion d'erreurs)
+- `AppLogger` le code appelle `$this->logger->info()` / `error()` au niveau `src/AppLogger.php:23,28` sans lever d'exception au niveau du code de cette classe ; l'exécution réelle et la gestion d'erreurs du handler Monolog relèvent de la configuration externe
+- Les évolutions futures de Monolog (changements d'API, retrait de méthodes) relèvent de la gestion de dépendances Composer et ne sont pas garanties par cette bibliothèque
 
 ---
 
 **Branche** : `main`  
-**SHA référence** : `9c9ac54` (HEAD courant)  
+**SHA référence** : `ecaa342` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

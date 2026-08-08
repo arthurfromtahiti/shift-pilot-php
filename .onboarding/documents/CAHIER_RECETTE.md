@@ -24,7 +24,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `9c9ac54` (HEAD courant)
+- SHA cible : `ecaa342` (HEAD courant)
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -352,7 +352,7 @@ $calc->totalTtc([
 
 Sortie attendue :
 ```
-PHPUnit 10.5.x (ou supérieure)
+PHPUnit 10.5.x
 Tests: 12, Assertions: >= 12
 OK
 ```
@@ -389,11 +389,11 @@ Critères de succès :
 
 Attendus après exécution (`composer test`) :
 ```
-✓ testTotalHorsTaxe                        PASS (à confirmer en runtime)
-✓ testTotalTtcTauxStandard                 PASS (à confirmer en runtime)
-✓ testTotalTtcTauxReduit                   PASS (à confirmer en runtime)
-✓ testTotalTtcTauxMixte                    PASS (à confirmer en runtime)
-✓ testTotalTtcSansTauxUtiliseTauxStandard  PASS (à confirmer en runtime)
+✓ testTotalHorsTaxe                        À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcTauxStandard                 À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcTauxReduit                   À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcTauxMixte                    À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcSansTauxUtiliseTauxStandard  À_OBSERVER (assertions correctes, exécution non observée)
 ```
 
 ### Bloc B — Tests d'exception (PHPUnit)
@@ -402,13 +402,13 @@ Attendus après exécution (`composer test`) :
 
 Attendus après exécution (`composer test`) :
 ```
-✓ testTotalHorsTaxeClePrixUnitaireAbsente       PASS (à confirmer en runtime)
-✓ testTotalHorsTaxeCleQuantiteAbsente           PASS (à confirmer en runtime)
-✓ testTotalTtcClePrixUnitaireAbsente            PASS (à confirmer en runtime)
-✓ testTotalTtcCleQuantiteAbsente                PASS (à confirmer en runtime)
-✓ testLigneSansCleMissingAllKeys                PASS (à confirmer en runtime)
-✓ testTotalHorsTaxeOverflowException            PASS (à confirmer en runtime)
-✓ testTotalTtcOverflowException                 PASS (à confirmer en runtime)
+✓ testTotalHorsTaxeClePrixUnitaireAbsente       À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalHorsTaxeCleQuantiteAbsente           À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcClePrixUnitaireAbsente            À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcCleQuantiteAbsente                À_OBSERVER (assertions correctes, exécution non observée)
+✓ testLigneSansCleMissingAllKeys                À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalHorsTaxeOverflowException            À_OBSERVER (assertions correctes, exécution non observée)
+✓ testTotalTtcOverflowException                 À_OBSERVER (assertions correctes, exécution non observée)
 ```
 
 ### Bloc C — Infrastructure
@@ -429,12 +429,12 @@ Attendus après exécution (`composer test`) :
 - **Bloc C (Infrastructure)** : 3 checks — déclarations `VÉRIFIÉ_CODE` (Monolog 3.x, PHP 8.1), installation `À OBSERVER` en runtime
 
 ```
-Bloc A (Nominaux)  : 5 tests — assertions correctes, exécution à confirmer
-Bloc B (Exceptions): 7 tests — assertions correctes, exécution à confirmer
-Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation à confirmer
+Bloc A (Nominaux)  : 5 tests — assertions correctes, exécution À_OBSERVER en runtime
+Bloc B (Exceptions): 7 tests — assertions correctes, exécution À_OBSERVER en runtime
+Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation À_OBSERVER en runtime
 ────────────────────────────────────────────────────────────────
 Total: 12 tests (structure prouvée, exécution non observée) + infrastructure
-Verdict: PASS en statique ; PASS/FAIL en runtime selon `composer test`
+Statut: VÉRIFIÉ_CODE en statique ; PASS/FAIL en runtime selon `composer test`
 ```
 
 **Important** : Ce cahier valide que les tests **existent** et que leurs assertions sont **arithmétiquement correctes**. Il ne remplace pas l'exécution réelle de `composer test`, qui est l'unique preuve de fonctionnement en runtime.
@@ -459,7 +459,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : `9c9ac54` (HEAD courant)  
+**SHA référence** : `ecaa342` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : TESTING_AUDIT.md  
 **Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)

@@ -279,7 +279,7 @@ Ligne 9 : docblock indiquant l'utilisation de Monolog 3.x (mise à jour 2026-08-
 | **Classe entièrement non testée** | (fichier entier) | Moyen | ⚠️ **À adresser** : ajouter `AppLoggerTest.php` (au min. test de construction) |
 | Pas d'interface pour injection | lignes 17-18 | Moyen | Acceptable pour pilote ; extraire `LoggerInterface` pour production |
 | Pas de gestion d'exception | lignes 23,28 | Faible | Les erreurs Monolog remontent à l'appelant — à documenter |
-| Dépend API spécifique Monolog 3.x | lignes 23,28 | Moyen | `info()`/`error()` propres à 3.x ; vigilance lors d'une montée majeure future |
+| Dépend API spécifique Monolog 3.x | lignes 23,28 | Moyen | `info()`/`error()` propres à 3.x ; changements de version majeure relèvent de la gestion Composer et équipe ops |
 
 ---
 
@@ -297,7 +297,7 @@ Ligne 9 : docblock indiquant l'utilisation de Monolog 3.x (mise à jour 2026-08-
 
 | Package | Version déclarée | Version verrouillée | But | Fichier |
 |---|---|---|---|---|
-| `phpunit/phpunit` | `^10.5` | `10.5.x` (composer.lock) | Tests unitaires | `tests/InvoiceCalculatorTest.php` |
+| `phpunit/phpunit` | `^10.5` | `10.5.64` (composer.lock) | Tests unitaires | `tests/InvoiceCalculatorTest.php` |
 
 **État** : PHPUnit 10.5.x ; **12 tests couvrent `InvoiceCalculator`** ; `AppLogger` n'a aucun test.
 
@@ -421,6 +421,6 @@ Application hôte
 ---
 
 **Branche** : `main`  
-**SHA référence** : `9c9ac54` (HEAD courant)  
+**SHA référence** : `ecaa342` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

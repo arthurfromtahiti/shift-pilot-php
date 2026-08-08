@@ -27,7 +27,7 @@ shift-pilot-php/
 - Namespace PSR-4 : `App\` → `src/`
 - Tests : namespace `App\Tests\`, route `tests/`
 - **PHP minimum 8.1** (`composer.json:7` — **NOTE** : README.md annonce 8.0, incohérence détectée)
-- **composer.lock** : présent, versionné (Monolog 3.10.0, PHPUnit 10.5)
+- **composer.lock** : présent, versionné (Monolog 3.10.0, PHPUnit 10.5.64)
 - Dépendance unique métier : `monolog/monolog: ^3.0` (Monolog 3.x, migré 2026-08-08)
 
 ## Domaines métier
@@ -92,7 +92,7 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 - Taux TGC (16 % et 5 %) : contexte externe, supposé correspondre aux taux polynésiens. Aucune source légale dans le dépôt — à valider par le board métier
 - Mode d'arrondi : `round()` appelé sans argument explicite dans `src/InvoiceCalculator.php:28,51` — utiliserait `PHP_ROUND_HALF_UP` par défaut **selon le comportement PHP standard**, non contrôlé explicitement par le code. Conformité avec la réglementation CFP non sourcée dans le dépôt — à valider auprès de l'autorité fiscale polynésienne
 - Taux par défaut silencieux : l'absence de clé `taux` replie sur `TGC_STANDARD` (16 %) sans signal — risque de facturation incorrecte chez un consommateur qui omet `taux` pour une ligne à 5 % (documenté dans le FUNCTIONAL_AUDIT)
-- Monolog 1.x obsolescence : possibilité que Monolog 1.x soit retiré ou que 2.x/3.x cassent l'API — à valider avec Monolog release notes et gestion de dépendance Composer auprès de l'équipe ops
+- **Stabilité future de Monolog** (hypothèse externe) : migrations futures de Monolog (changements d'API majeurs, retrait de Monolog 1.x, incompatibilités) relèvent de la gestion de dépendances Composer et ne peuvent être garanties par ce dépôt. Suivi par la gestion de dépendances et équipe ops selon les nouvelles versions de Monolog
 
 **Confiance niveau** : **medium** sur les intentions métier et la conformité réglementaire ; **high** sur la stabilité actuelle de la dépendance Monolog 3.10.0 (verrouillée dans `composer.lock`).
 
@@ -110,7 +110,7 @@ Ces inconnues sont **des questions pour le board**, pas des défauts du livrable
 | Point | Gravité | Détail | État |
 |---|---|---|---|
 | **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | **À CORRIGER** : align README avec composer.json (8.1) |
-| **Incohérence documentaire composer.lock** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent (Monolog 3.10.0) | **À CORRIGER** : mettre à jour README.md |
+| **Incohérence documentaire composer.lock** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent et suivi git (Monolog 3.10.0) | **À CORRIGER** : mettre à jour README.md pour qualifier que composer.lock est versionné |
 | **`AppLogger` non testé** | Moyen | Aucun test pour cette classe — régression Monolog 3.x non interceptée | À adresser : ajouter tests `AppLoggerTest.php` |
 | **Taux par défaut silencieux** | Moyen | Absent de `taux`, replie sur `TGC_STANDARD` (16 %) sans signal — risque facturation 16 % au lieu de 5 % | À documenter : ajouter exemple dans README.md |
 | **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `taux > 1.0` sans erreur | À clarifier : documenter le contrat ou ajouter validation |
@@ -140,6 +140,6 @@ Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences docume
 ---
 
 **Branche** : `main`  
-**SHA référence** : `9c9ac54` (HEAD courant)  
+**SHA référence** : `ecaa342` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md
