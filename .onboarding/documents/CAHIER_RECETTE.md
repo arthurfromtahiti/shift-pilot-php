@@ -53,10 +53,10 @@ $this->assertSame(25000, $calc->totalHorsTaxe([
 ```
 
 **Test PHPUnit** : `testTotalHorsTaxe` (`tests/InvoiceCalculatorTest.php:16`)  
-**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte ; exécution runtime non observée  
 **Critère de recette (statique)** : test existe, assertion exacte (25000), syntaxe valide  
-**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne assertion passed  
-**Confiance** : **high** (structure validée, assertions correctes)
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne exit code 0 (PASS)  
+**Confiance** : **high** (structure et assertions validées statiquement ; succès de l'exécution à confirmer en runtime)
 
 ---
 
@@ -74,10 +74,10 @@ $this->assertSame(11600, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcTauxStandard` (`tests/InvoiceCalculatorTest.php:24`)  
-**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte ; exécution runtime non observée  
 **Critère de recette (statique)** : test existe, assertion exacte (11600), taux par ligne appliqué correctement  
-**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne assertion passed  
-**Confiance** : **high** (structure validée, assertions correctes)
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne exit code 0 (PASS)  
+**Confiance** : **high** (structure et assertions validées statiquement ; succès de l'exécution à confirmer en runtime)
 
 ---
 
@@ -95,9 +95,10 @@ $this->assertSame(10500, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcTauxReduit` (`tests/InvoiceCalculatorTest.php:31`)  
-**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte ; exécution runtime non observée  
 **Critère de recette** : test existe, assertion exacte (10500)  
-**Confiance** : **high** (structure validée, exécution non observée)
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne exit code 0 (PASS)  
+**Confiance** : **high** (structure et assertions validées statiquement ; succès de l'exécution à confirmer en runtime)
 
 ---
 
@@ -116,9 +117,10 @@ $this->assertSame(22100, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcTauxMixte` (`tests/InvoiceCalculatorTest.php:34`)  
-**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte ; exécution runtime non observée  
 **Critère de recette** : test existe, somme exacte (22100), taux multiples par ligne appliqués correctement  
-**Confiance** : **high** (structure validée, exécution non observée)
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne exit code 0 (PASS)  
+**Confiance** : **high** (structure et assertions validées statiquement ; succès de l'exécution à confirmer en runtime)
 
 ---
 
@@ -136,8 +138,9 @@ $this->assertSame(11600, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcSansTauxUtiliseTauxStandard` (`tests/InvoiceCalculatorTest.php:47`)  
-**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte ; exécution runtime non observée  
 **Critère de recette** : test existe, repli sur 16 % confirmé  
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne exit code 0 (PASS)  
 **Attention** : ce repli silencieux sans signal d'erreur peut induire une facturation incorrecte si le consommateur omet `taux` pour une ligne qui devrait être à 5 %
 
 ---
@@ -275,23 +278,26 @@ $calc->totalTtc([
 
 **Objectif** : vérifier que la dépendance Monolog 3.x est bien déclarée et que le code utilise l'API 3.x
 
-**Statut** : `VÉRIFIÉ_CODE` — vérification statique sans exécution
+**Statut** : `VÉRIFIÉ_CODE` — vérification statique des appels d'API ; exécution runtime et garantie de fonctionnement Monolog non observées
 
 **Étapes** :
 
 1. Lire `composer.json:8` — vérifier la déclaration `^3.0`
 2. Lire `src/AppLogger.php:23,28` — vérifier les appels `$this->logger->info()` et `error()`
 
-**Critères de recette** :
+**Critères de recette (statique - prouvés)** :
 - ✅ `composer.json:8` déclare `"monolog/monolog": "^3.0"`
 - ✅ `src/AppLogger.php:23` utilise `$this->logger->info()` (API Monolog 3.x)
 - ✅ `src/AppLogger.php:28` utilise `$this->logger->error()` (API Monolog 3.x)
 
-**Preuve** : vérification de source, pas d'exécution requise
+**Preuve** : vérification de source des appels d'API, pas d'exécution réelle requise pour confirmer la syntaxe
 
-**Note** : migration effectuée 2026-08-08, API mises à jour (`info()`/`error()` au lieu de `addInfo()`/`addError()` de Monolog 1.x)
+**À OBSERVER en runtime** :
+1. Installation effective de `vendor/monolog` et chargement correct via `autoload.php` (via `composer install`)
+2. **Aucun error dans Monolog lors de l'appel** : `AppLogger` n'a aucun test dédié ; le comportement effectif de Monolog (écriture réelle sur le handler, gestion d'erreurs, respect du flux configuré) n'a pas été observé dans ce dépôt
+3. Exécution de `composer install` sans erreur et installation complète de `vendor/monolog/monolog:^3.0`
 
-**À OBSERVER en runtime** : l'installation effective de `vendor/monolog` et le chargement correct de la classe via `autoload.php` dépendent de `composer install`
+**Note** : migration vers l'API Monolog 3.x effectuée 2026-08-08 (`info()`/`error()` au lieu de `addInfo()`/`addError()` de Monolog 1.x). L'absence de test pour `AppLogger` signifie qu'une rupture dans l'API ou le comportement de Monolog ne serait détectée qu'à l'exécution réelle de l'application hôte.
 
 ---
 
@@ -379,46 +385,59 @@ Critères de succès :
 
 ### Bloc A — Tests nominaux (PHPUnit)
 
+**Statut** : Structure et assertions `VÉRIFIÉ_CODE` ; exécution runtime `À OBSERVER`
+
+Attendus après exécution (`composer test`) :
 ```
-✓ testTotalHorsTaxe                        PASS
-✓ testTotalTtcTauxStandard                 PASS
-✓ testTotalTtcTauxReduit                   PASS
-✓ testTotalTtcTauxMixte                    PASS
-✓ testTotalTtcSansTauxUtiliseTauxStandard  PASS
+✓ testTotalHorsTaxe                        PASS (à confirmer en runtime)
+✓ testTotalTtcTauxStandard                 PASS (à confirmer en runtime)
+✓ testTotalTtcTauxReduit                   PASS (à confirmer en runtime)
+✓ testTotalTtcTauxMixte                    PASS (à confirmer en runtime)
+✓ testTotalTtcSansTauxUtiliseTauxStandard  PASS (à confirmer en runtime)
 ```
 
 ### Bloc B — Tests d'exception (PHPUnit)
 
+**Statut** : Structure et assertions `VÉRIFIÉ_CODE` ; exécution runtime `À OBSERVER`
+
+Attendus après exécution (`composer test`) :
 ```
-✓ testTotalHorsTaxeClePrixUnitaireAbsente       PASS
-✓ testTotalHorsTaxeCleQuantiteAbsente           PASS
-✓ testTotalTtcClePrixUnitaireAbsente            PASS
-✓ testTotalTtcCleQuantiteAbsente                PASS
-✓ testLigneSansCleMissingAllKeys                PASS
-✓ testTotalHorsTaxeOverflowException            PASS
-✓ testTotalTtcOverflowException                 PASS
+✓ testTotalHorsTaxeClePrixUnitaireAbsente       PASS (à confirmer en runtime)
+✓ testTotalHorsTaxeCleQuantiteAbsente           PASS (à confirmer en runtime)
+✓ testTotalTtcClePrixUnitaireAbsente            PASS (à confirmer en runtime)
+✓ testTotalTtcCleQuantiteAbsente                PASS (à confirmer en runtime)
+✓ testLigneSansCleMissingAllKeys                PASS (à confirmer en runtime)
+✓ testTotalHorsTaxeOverflowException            PASS (à confirmer en runtime)
+✓ testTotalTtcOverflowException                 PASS (à confirmer en runtime)
 ```
 
 ### Bloc C — Infrastructure
 
-| Test | Résultat attendu |
-|---|---|
-| C1 (Monolog version) | 3.10.0 ou supérieure < 4.0 |
-| C2 (PHP version) | >= 8.1 |
-| C3 (PHPUnit suite) | 12 tests, 0 erreurs, exit 0 |
+| Test | Preuve statique | Résultat attendu en runtime |
+|---|---|---|
+| C1 (Monolog version) | ✅ API Monolog 3.x appelée correctement | 3.10.0 ou supérieure < 4.0 installée sans erreur |
+| C2 (PHP version) | ✅ composer.json déclare `>=8.1` | PHP >= 8.1 disponible sur l'environnement |
+| C3 (PHPUnit suite) | ✅ 12 tests avec assertions correctes | 12 tests exécutés, 0 erreurs, exit code 0 |
 
 ---
 
 ## Résumé global
 
+**Statut de preuve** :
+- **Bloc A (Nominaux)** : 5 tests — structure et assertions `VÉRIFIÉ_CODE` ; exécution `À OBSERVER` en runtime
+- **Bloc B (Exceptions)** : 7 tests — structure et assertions `VÉRIFIÉ_CODE` ; exécution `À OBSERVER` en runtime
+- **Bloc C (Infrastructure)** : 3 checks — déclarations `VÉRIFIÉ_CODE` (Monolog 3.x, PHP 8.1), installation `À OBSERVER` en runtime
+
 ```
-Bloc A (Nominaux)  : 5 tests ✓
-Bloc B (Exceptions): 7 tests ✓
-Bloc C (Infrastructure) : 3 checks ✓
-────────────────────────────────
-Total: 12 tests + infrastructure
-Verdict: PASS (si tous les critères sont met)
+Bloc A (Nominaux)  : 5 tests — assertions correctes, exécution à confirmer
+Bloc B (Exceptions): 7 tests — assertions correctes, exécution à confirmer
+Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation à confirmer
+────────────────────────────────────────────────────────────────
+Total: 12 tests (structure prouvée, exécution non observée) + infrastructure
+Verdict: PASS en statique ; PASS/FAIL en runtime selon `composer test`
 ```
+
+**Important** : Ce cahier valide que les tests **existent** et que leurs assertions sont **arithmétiquement correctes**. Il ne remplace pas l'exécution réelle de `composer test`, qui est l'unique preuve de fonctionnement en runtime.
 
 ---
 

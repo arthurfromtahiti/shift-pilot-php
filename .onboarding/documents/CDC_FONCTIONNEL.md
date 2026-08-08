@@ -237,7 +237,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 ```
 
 **Clés obligatoires** : `quantite`, `prixUnitaire`  
-**Clés optionnelles** : `label` (stockée mais ignorée par le calcul), `taux` (défaut 0.16 si absente)  
+**Clés optionnelles** : `label` (ignorée par le calcul), `taux` (défaut 0.16 si absente)  
 **Clés supplémentaires** : toute autre clé sera ignorée ; l'absence de clé obligatoire causera une `\InvalidArgumentException` à l'exécution.
 
 ### Constantes de domaine
