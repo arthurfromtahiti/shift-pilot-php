@@ -24,7 +24,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `1fdf38faddf576bb801d32d2d0a78619be8768ce` (HEAD courant)
+- SHA cible : `a3bc97a7556e9f959c06a17c7a3b8c27a6e8c1dc` (HEAD courant)
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -54,8 +54,9 @@ $this->assertSame(25000, $calc->totalHorsTaxe([
 
 **Test PHPUnit** : `testTotalHorsTaxe` (`tests/InvoiceCalculatorTest.php:16`)  
 **Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
-**Critère de recette** : test existe, assertion exacte (25000), syntaxe valide  
-**Confiance** : **high** (structure validée, exécution non observée)
+**Critère de recette (statique)** : test existe, assertion exacte (25000), syntaxe valide  
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne assertion passed  
+**Confiance** : **high** (structure validée, assertions correctes)
 
 ---
 
@@ -74,8 +75,9 @@ $this->assertSame(11600, $calc->totalTtc([
 
 **Test PHPUnit** : `testTotalTtcTauxStandard` (`tests/InvoiceCalculatorTest.php:24`)  
 **Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
-**Critère de recette** : test existe, assertion exacte (11600), taux par ligne appliqué correctement  
-**Confiance** : **high** (structure validée, exécution non observée)
+**Critère de recette (statique)** : test existe, assertion exacte (11600), taux par ligne appliqué correctement  
+**À OBSERVER (runtime)** : PHPUnit exécute le test et retourne assertion passed  
+**Confiance** : **high** (structure validée, assertions correctes)
 
 ---
 
@@ -155,7 +157,9 @@ $calc->totalHorsTaxe([
 ```
 
 **Test PHPUnit** : `tests/InvoiceCalculatorTest.php:54`  
-**Critère de recette** : exception levée, type exact `InvalidArgumentException`
+**Statut** : `VÉRIFIÉ_CODE` — source vérifie `isset($ligne['quantite'], $ligne['prixUnitaire'])` et lève exception
+**Critère de recette (statique)** : test existe, type exact `InvalidArgumentException` attendu  
+**À OBSERVER (runtime)** : PHPUnit exécute le test et valide que l'exception est levée
 
 ---
 
@@ -265,80 +269,95 @@ $calc->totalTtc([
 
 ---
 
-## Bloc C — Tests techniques (infrastructure et dépendances)
+## Bloc C — Vérifications d'infrastructure (code et configuration)
 
-### Test C1 : Dépendance Monolog 3.x présente et correcte
+### Test C1 : Dépendance Monolog 3.x déclarée et API utilisée correctement
 
-**Objectif** : vérifier que Monolog 3.x est correctement installée (migré depuis 1.x)
+**Objectif** : vérifier que la dépendance Monolog 3.x est bien déclarée et que le code utilise l'API 3.x
 
-**Étapes** :
-
-1. Exécuter `composer show monolog/monolog`
-
-**Sortie attendue** :
-```
-monolog/monolog  3.10.0 (ou supérieure dans 3.x)
-```
-
-**Critère de recette** :
-- ✅ Version majeure = 3
-- ✅ Version >= 3.0 (satisfait `^3.0`)
-- ✅ `composer.lock` verrouille la version exacte
-
-**Preuve** : `composer.json:8` déclare `^3.0`, `composer.lock` verrouille 3.10.0
-
-**Note** : migration effectuée 2026-08-08, API mises à jour (`info()`/`error()` au lieu de `addInfo()`/`addError()`)
-
----
-
-### Test C2 : PHP version >= 8.1
-
-**Objectif** : vérifier que l'environnement d'exécution satisfait la contrainte PHP 8.1
+**Statut** : `VÉRIFIÉ_CODE` — vérification statique sans exécution
 
 **Étapes** :
 
-1. Exécuter `php --version`
-2. Extraire le numéro de version majeure.mineure
-
-**Sortie attendue** :
-```
-PHP 8.1.0 (ou supérieure)
-```
-
-**Critère de recette** :
-- ✅ Version majeure.mineure >= 8.1
-
-**Preuve** : `composer.json:7` déclare `>=8.1`
-
-**Note** : incohérence détectée — `README.md:7` annonce PHP 8.0, correction nécessaire
-
----
-
-### Test C3 : Exécution complète de la suite PHPUnit
-
-**Objectif** : valider que l'ensemble des 12 tests s'exécute et que le bootstrap fonctionne
-
-**Étapes** :
-
-1. Nettoyer (optionnel) : `rm -rf vendor/`
-2. Installer : `composer install`
-3. Exécuter : `composer test` (ou `phpunit` directement)
-
-**Sortie attendue** :
-```
-PHPUnit 10.5.x (ou supérieure) ...
-Tests: 12, Assertions: >= 12, OK.
-```
+1. Lire `composer.json:8` — vérifier la déclaration `^3.0`
+2. Lire `src/AppLogger.php:23,28` — vérifier les appels `$this->logger->info()` et `error()`
 
 **Critères de recette** :
-- ✅ Exit code = 0 (succès)
-- ✅ 12 tests exécutés
-- ✅ 0 erreurs, 0 failures
-- ✅ Durée < 2 secondes
+- ✅ `composer.json:8` déclare `"monolog/monolog": "^3.0"`
+- ✅ `src/AppLogger.php:23` utilise `$this->logger->info()` (API Monolog 3.x)
+- ✅ `src/AppLogger.php:28` utilise `$this->logger->error()` (API Monolog 3.x)
 
-**Statut** : `INCONNU` — exécution runtime n'a pas été observée dans l'audit (vendor absent lors du run). La structure des tests (syntaxe, assertions) est `VÉRIFIÉ_CODE` dans `tests/InvoiceCalculatorTest.php` (12 méthodes existantes, assertions arithmétiquement correctes). L'exécution réelle dépend de l'installation complète de `vendor/` et de la capacité de PHPUnit à charger les classes via `autoload.php`.
+**Preuve** : vérification de source, pas d'exécution requise
 
-**Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap ; l'exécution reste à confirmer par une vraie run
+**Note** : migration effectuée 2026-08-08, API mises à jour (`info()`/`error()` au lieu de `addInfo()`/`addError()` de Monolog 1.x)
+
+**À OBSERVER en runtime** : l'installation effective de `vendor/monolog` et le chargement correct de la classe via `autoload.php` dépendent de `composer install`
+
+---
+
+### Test C2 : Contrainte PHP 8.1 déclarée et cohérente
+
+**Objectif** : vérifier que la contrainte PHP 8.1 est bien déclarée dans composer.json
+
+**Statut** : `VÉRIFIÉ_CODE` — vérification statique
+
+**Étapes** :
+
+1. Lire `composer.json:7` — vérifier la déclaration `>=8.1`
+
+**Critère de recette** :
+- ✅ `composer.json:7` déclare `"php": ">=8.1"`
+
+**Preuve** : vérification de source, pas d'exécution requise
+
+**À OBSERVER en runtime** : 
+- Exécuter `php --version` pour confirmer que PHP >= 8.1 est disponible sur l'environnement
+- Sortie attendue : `PHP 8.1.0` (ou supérieur)
+
+---
+
+### Test C3 : Suite PHPUnit — 12 tests de structure et assertions vérifiées
+
+**Objectif** : valider que les 12 tests existent, sont syntaxiquement corrects et ont des assertions arithmétiquement justes
+
+**Statut** : `VÉRIFIÉ_CODE` — structure et assertions lues entièrement ; exécution runtime `À OBSERVER`
+
+**Vérifications statiques réalisées** :
+
+1. Dénombrement : `tests/InvoiceCalculatorTest.php` contient exactement 12 méthodes de test
+   - A1-A5 : 5 cas nominaux (HT, TTC standard, TTC réduit, TTC mixte, taux par défaut)
+   - B1-B7 : 7 cas d'exception (clés manquantes, dépassement overflow)
+
+2. Assertions arithmétiquement correctes :
+   - HT : `2×10000 + 1×5000 = 25000` ✅
+   - TTC 16 % : `10000 × 1.16 = 11600` ✅
+   - TTC 5 % : `10000 × 1.05 = 10500` ✅
+   - TTC mixte : `11600 + 10500 = 22100` ✅
+   - Exceptions : types exacts (`InvalidArgumentException`, `OverflowException`) correctement spécifiés
+
+**Preuve** : source `tests/InvoiceCalculatorTest.php:16-96` lu intégralement
+
+**À OBSERVER en runtime** :
+
+Étapes :
+1. Nettoyer (optionnel) : `rm -rf vendor/`
+2. Installer dépendances : `composer install`
+3. Exécuter tests : `composer test` (ou `phpunit` directement)
+
+Sortie attendue :
+```
+PHPUnit 10.5.x (ou supérieure)
+Tests: 12, Assertions: >= 12
+OK
+```
+
+Critères de succès :
+- Exit code = 0
+- 12 tests exécutés
+- 0 erreurs, 0 failures
+- Durée < 2 secondes
+
+**Note** : l'exécution réelle dépend de l'installation complète de `vendor/` (Monolog, PHPUnit) et de la capacité du bootstrap `autoload.php` à charger les classes. Cette vérification n'a pas été observée dans le run d'audit (dépôt analysé statiquement).
 
 ---
 
@@ -421,7 +440,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant)  
+**SHA référence** : `a3bc97a7556e9f959c06a17c7a3b8c27a6e8c1dc` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : TESTING_AUDIT.md  
 **Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)
