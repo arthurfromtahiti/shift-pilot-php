@@ -326,6 +326,6 @@ La bibliothèque **ne garantit pas** :
 ---
 
 **Branche** : `main`  
-**SHA référence** : `ecaa342` (HEAD courant)  
+**SHA référence** : `10d96b9` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md
