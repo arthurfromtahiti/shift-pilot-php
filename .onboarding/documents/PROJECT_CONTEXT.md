@@ -4,7 +4,7 @@
 
 **shift-pilot-php** est une **bibliothèque PHP minimale** de calcul de facturation avec la **TGC** (taxe générale sur la consommation, régime fiscal Polynésie française). Elle implémente deux fonctions mathématiques : calcul du total hors taxe et calcul du total toutes taxes comprises, en appliquant deux taux fixes (standard 16 % et réduit 5 %).
 
-Le dépôt porte explicitement la mention « **pilote de test SHIFT/Paperclip** » (`README.md`) : c'est un cas d'usage minimal servant de point de départ à la chaîne d'onboarding Paperclip. Pas de contrôleur web, pas de base de données, pas de génération de document — juste le calcul, accompagné d'une journalisation applicative via Monolog 1.x.
+Le dépôt porte explicitement la mention « **pilote de test SHIFT/Paperclip** » (`README.md`) : c'est un cas d'usage minimal servant de point de départ à la chaîne d'onboarding Paperclip. Pas de contrôleur web, pas de base de données, pas de génération de document — juste le calcul, accompagné d'une journalisation applicative via **Monolog 3.x** (migré en 2026-08-08).
 
 **Contexte d'usage** : la bibliothèque est destinée à être consommée par une application hôte (non présente dans ce dépôt) qui l'instanciera, lui fournira des lignes de facture et exploitera les résultats numériques. Le projet **ne déploie rien seul** : c'est un composant.
 
@@ -16,17 +16,19 @@ shift-pilot-php/
 │   ├── InvoiceCalculator.php    # Unique classe métier
 │   └── AppLogger.php             # Adaptateur technique Monolog
 ├── tests/
-│   └── InvoiceCalculatorTest.php # 3 tests PHPUnit nominaux
-├── composer.json                 # Dépendances (Monolog 1.x, PHPUnit)
+│   └── InvoiceCalculatorTest.php # 12 tests PHPUnit (nominaux, taux mixte, exceptions)
+├── composer.json                 # Dépendances (Monolog 3.x, PHPUnit 10.5)
+├── composer.lock                 # Verrouille Monolog 3.10.0 (depuis 2026-08-08)
 ├── phpunit.xml                   # Configuration des tests
-└── README.md                      # Présentation du pilote
+└── README.md                      # Présentation du pilote (incohérence PHP 8.0/8.1 détectée)
 ```
 
 **Clés organisationnelles** :
 - Namespace PSR-4 : `App\` → `src/`
 - Tests : namespace `App\Tests\`, route `tests/`
-- PHP minimum 8.0 (`composer.json:6`)
-- Dépendance unique métier : `monolog/monolog: ^1.25` (Monolog 1.x, API stable)
+- **PHP minimum 8.1** (`composer.json:7` — **NOTE** : README.md annonce 8.0, incohérence détectée)
+- **composer.lock** : présent, versionné (Monolog 3.10.0, PHPUnit 10.5)
+- Dépendance unique métier : `monolog/monolog: ^3.0` (Monolog 3.x, migré 2026-08-08)
 
 ## Domaines métier
 
@@ -61,15 +63,9 @@ Cette liste définit le **contrat** de la bibliothèque. Tout ce qui n'est pas i
 
 ## Limitations architecturales
 
-Deux limites sont **inscrites dans l'API** et ne peuvent être contournées qu'avec une refonte :
+Une limite reste **inscrite dans l'API** et ne peut être contournée qu'avec une refonte :
 
-1. **Taux TGC unique par facture** (`src/InvoiceCalculator.php:26`)
-   - Signature : `totalTtc(array $lignes, bool $tauxReduit = false): int`
-   - Effet : le taux sélectionné (`$tauxReduit`) s'applique à l'intégralité du total HT
-   - Conséquence : impossible de calculer une facture ayant des lignes à 16 % et des lignes à 5 % en un seul appel
-   - Contournement possible : appeler `totalTtc` deux fois (une fois par sous-ensemble de lignes avec le taux correspondant) et sommer les résultats — non documenté, non testé
-
-2. **Pas d'interface de logger** (`src/AppLogger.php`)
+1. **Pas d'interface de logger** (`src/AppLogger.php`)
    - Le constructeur instancie directement `Monolog\Logger` et `StreamHandler` sans injection
    - Conséquence : impossible de substituer un handler alternatif (base de données, API, mémoire pour tests) sans modifier la classe
    - Contournement possible : sous-classer `AppLogger` — pas documenté, pas testé
@@ -82,19 +78,22 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 
 - Implémentation lue intégralement : deux fichiers source seuls, pas de code caché
 - Constantes TGC : `TGC_STANDARD = 0.16` et `TGC_REDUIT = 0.05` (confirmées ligne par ligne)
-- Trois tests valident les calculs nominaux (HT, TTC standard, TTC réduit)
-- Aucune couche HTTP/ORM/persistance : vérifié sur l'arbre complet du dépôt (`git ls-tree`)
-- Dépendances explicites : seules Monolog 1.x (logger) et PHPUnit (tests)
+- **12 tests** valident les calculs nominaux, les taux mixtes, le taux par défaut, et les cas d'exception (`\InvalidArgumentException`, `\OverflowException`)
+- **Gardes ajoutées** : `\InvalidArgumentException` sur clé manquante, `\OverflowException` sur dépassement `PHP_INT_MAX` (depuis 2026-08-08)
+- **Taux par ligne** : limitation « taux unique » résolue — factures mixtes testées (test `testTotalTtcTauxMixte`, SHA 7ef6351)
+- **Monolog 3.x** : migration effectuée, `composer.json:8` déclare `^3.0`, API mises à jour (`info()` / `error()`), `composer.lock` versionné et verrouille `3.10.0`
+- Aucune couche HTTP/ORM/persistance : vérifié sur l'arbre complet du dépôt
+- Dépendances explicites et verrouillées : Monolog 3.10.0, PHPUnit 10.5 (depuis 2026-08-08)
 
-**Confiance niveau** : **high** sur le code source et son implémentation.
+**Confiance niveau** : **high** sur le code source, son implémentation, et la stabilité des dépendances (composer.lock présent).
 
 ### Ce qu'on sait par hypothèse (`HYPOTHÈSE`)
 
 - Taux TGC (16 % et 5 %) : contexte externe, supposé correspondre aux taux polynésiens. Aucune source légale dans le dépôt — à valider par le board métier
 - Mode d'arrondi : `round()` appelé sans argument explicite — utilise `PHP_ROUND_HALF_UP` par défaut (hypothèse d'implémentation PHP). Conformité avec la réglementation CFP non sourcée dans le dépôt
-- Migration Monolog 1.x vers 2.x : les méthodes `addInfo()`/`addError()` risquent d'être retirées en Monolog 2.0 (connaissance externe) — la contrainte `^1.25` protège aujourd'hui, mais ce risque reste latent
+- Taux par défaut silencieux : l'absence de clé `taux` replie sur `TGC_STANDARD` (16 %) sans signal — risque de facturation incorrecte chez un consommateur qui omet `taux` pour une ligne à 5 % (documenté dans le FUNCTIONAL_AUDIT)
 
-**Confiance niveau** : **medium** sur les intentions métier et la conformité réglementaire ; **low** sur la stabilité de la dépendance Monolog si la contrainte est relâchée.
+**Confiance niveau** : **medium** sur les intentions métier et la conformité réglementaire ; **high** sur la stabilité de la dépendance Monolog 3.x (verrouillée dans `composer.lock`).
 
 ### Ce qu'on ignore (`INCONNU`)
 
@@ -107,35 +106,39 @@ Ces inconnues sont **des questions pour le board**, pas des défauts du livrable
 
 ## Points de fragilité repérés
 
-| Point | Gravité | Détail | Étape où l'adresser |
+| Point | Gravité | Détail | État |
 |---|---|---|---|
-| **Dépendance à Monolog 1.x** | Moyen | API `addInfo`/`addError` déclarée Monolog 1.x ; vigilance requise lors d'une montée de version | Architecture (avant toute montée de version) |
-| **Pas de `composer.lock`** | Moyen | Dépendances non reproductibles entre environnements (Monolog peut varier dans `^1.25`) | Architecture (reproductibilité) |
-| **`AppLogger` non testé** | Moyen | Aucun test pour cette classe — régression Monolog non interceptée | Tests (couverture) |
-| **Cas limites non couverts** | Faible | Tableau vide, clé manquante, valeur négative : comportement non prouvé | Tests (complétude) |
-| **Absence d'interface sur `AppLogger`** | Faible | Logger instancié directement — impossible de substituer pour tests | Architecture (injectabilité) |
-| **Taux unique par facture** | Faible pour pilote, Moyen pour production | Limitation architecturale, appropriée pour un pilote | Fonctionnel (à clarifier si le scope grossit) |
+| **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | **À CORRIGER** : align README avec composer.json (8.1) |
+| **Incohérence documentaire composer.lock** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent (Monolog 3.10.0) | **À CORRIGER** : mettre à jour README.md |
+| **`AppLogger` non testé** | Moyen | Aucun test pour cette classe — régression Monolog 3.x non interceptée | À adresser : ajouter tests `AppLoggerTest.php` |
+| **Taux par défaut silencieux** | Moyen | Absent de `taux`, replie sur `TGC_STANDARD` (16 %) sans signal — risque facturation 16 % au lieu de 5 % | À documenter : ajouter exemple dans README.md |
+| **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `taux > 1.0` sans erreur | À clarifier : documenter le contrat ou ajouter validation |
+| **Pas de validation de facture vide** | Faible | `totalTtc([])` retourne `0 F CFP` sans signal d'erreur | À clarifier : est-ce volontaire ou erreur à rejeter ? |
+| **Absence d'interface sur `AppLogger`** | Faible | Logger instancié directement — impossible de substituer pour tests ou autre handler | Architecture : acceptable pour pilote, à refactorer pour production |
 
-Aucune de ces fragilités ne rend le pilote inopérant. Elles ont toutes des remèdes documentés.
+Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences documentaires et le manque de tests `AppLogger` sont les plus impactantes.
 
 ## Charge de travail et ressources
 
-- **Checkout** : 7 fichiers versionnés (2 classes, 1 test, 3 configs, README)
-- **Développement estimé** : ~200 lignes de PHP productif
-- **Couverture de test actuelle** : 3 cas nominaux sur 1 classe ; 0 sur l'autre classe
+- **Checkout** : 8 fichiers versionnés (2 classes, 1 test, 4 configs incluant `composer.lock`, README)
+- **Développement estimé** : ~100 lignes de PHP métier, ~30 lignes de PHP logging technique
+- **Couverture de test actuelle** : 12 tests sur `InvoiceCalculator` (nominaux, taux mixte, exceptions) ; 0 tests sur `AppLogger`
 - **Dépôt partagé avec** : aucun (projet monolithique, un seul workspace)
 - **Fréquence d'accès base** : jamais (zéro persistance)
 
 ## À retenir pour la suite
 
 1. Ce projet est un **pilote volontairement minimal** — ne pas l'étendre avec du code de production absent
-2. Les **taux TGC** (16 %, 5 %) sont une décision métier à valider avec le board ; les constantes les rendent localisables mais non vérifiées
-3. La dépendance **Monolog 1.x** est protégée par la contrainte `^1.25` ; toute montée de version majeure requiert une vérification de compatibilité de l'API
-4. Aucune **intégration interne** entre `InvoiceCalculator` et `AppLogger` ne doit être ajoutée dans ce dépôt : c'est l'affaire de l'application hôte
-5. Le **périmètre absent** (HTTP, ORM, documents) n'est pas une limitation, c'est une délimitation intentionnelle — aucune demand de l'étendre n'a été reçue du board
+2. Les **taux TGC** (16 %, 5 %) sont une décision métier à valider avec le board ; les constantes les rendent localisables mais non vérifiées au-delà du code
+3. La dépendance **Monolog 3.x** (migée depuis 1.x en 2026-08-08) est protégée par `composer.lock` verrouillant `3.10.0` ; toute montée de version mineure/majeure requiert une vérification de compatibilité de l'API (`info()` / `error()`)
+4. **Incohérences documentaires détectées** : `README.md` annonce PHP 8.0 tandis que `composer.json` requiert 8.1 ; `README.md` prétend que `composer.lock` n'est pas versionné alors qu'il est présent. À corriger en priorité.
+5. La **capacité taux mixte** (lignes à 16 % et 5 % sur la même facture) est désormais implémentée et testée — limitation d'origine levée
+6. Aucune **intégration interne** entre `InvoiceCalculator` et `AppLogger` ne doit être ajoutée dans ce dépôt : c'est l'affaire de l'application hôte
+7. Le **périmètre absent** (HTTP, ORM, documents) n'est pas une limitation, c'est une délimitation intentionnelle — aucune demande de l'étendre n'a été reçue du board
 
 ---
 
-**Branche** : `main` (unique)  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30` (dernier commit : *Seed pilot PHP*)  
-**Date de dernière vérification** : 2026-08-04
+**Branche** : `main`  
+**SHA référence** : `192d0476d7cacc3f7c3b4c5e0c8e8a1e5b7c8d9f` (HEAD post-audit SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)  
+**Date de dernière mise à jour** : 2026-08-08  
+**Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md (SHA 7ef6351, 2026-08-08)

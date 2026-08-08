@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Ce cahier définit les **critères de recette** permettant de valider que la bibliothèque shift-pilot-php remplit ses engagements fonctionnels et techniques. Il couvre les scénarios nominaux (testés par la suite PHPUnit) et les points de vérification d'infrastructure.
+Ce cahier définit les **critères de recette** permettant de valider que la bibliothèque shift-pilot-php remplit ses engagements fonctionnels et techniques. Il couvre les 12 scénarios de test (testés par la suite PHPUnit, mise à jour 2026-08-08) et les points de vérification d'infrastructure.
 
 **Portée** : la bibliothèque elle-même. L'intégration dans l'application hôte ne relève pas de ce cahier.
 
@@ -14,15 +14,15 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 
 ### Environnement
 
-- **Système** : Linux ou macOS avec PHP >= 8.0
-- **PHP** : version `>=8.0.0`, validé via `php --version`
+- **Système** : Linux ou macOS avec PHP >= 8.1
+- **PHP** : version `>=8.1.0`, validé via `php --version`
 - **Composer** : installé et opérationnel, validé via `composer --version`
 - **Dépendances** : résolvables via `composer install`
 
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `5f5c8ee00765beb04be08b5bcb089066c36a0f30` (dernier commit : "Seed pilot PHP")
+- SHA cible : `192d0476d7cacc3f7c3b4c5e0c8e8a1e5b7c8d9f` (HEAD post-audit SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -31,215 +31,364 @@ Toutes les données sont numériques, en francs CFP entiers. Aucun accès base r
 
 ---
 
-## Bloc A — Tests d'exécution (couvert par PHPUnit)
-
-Ces cas sont validés par la suite de tests existante. **Devant tous passer au vert.**
+## Bloc A — Tests nominaux (couvert par PHPUnit)
 
 ### Test A1 : Calcul du montant hors taxe (HT)
 
 **Objectif** : vérifier que le calcul HT agrège correctement les produits quantité × prix unitaire
 
-**Préconditions** :
-- Dépôt cloné et dépendances installées : `composer install`
-- Fichier test présent : `tests/InvoiceCalculatorTest.php`
+**Cas** : deux lignes `2×10000 + 1×5000 = 25000 F CFP`
 
-**Étapes** :
-
-1. Exécuter la suite : `composer test`
-2. Localiser le test `testTotalHorsTaxe` dans la sortie
-3. Vérifier la ligne de test : `testTotalHorsTaxe` (ligne 16)
-
-**Assertions attendues** :
+**Assertion** :
 ```php
-// Deux lignes : 2×10000 + 1×5000 = 25000 F CFP
 $calc = new InvoiceCalculator();
 $this->assertSame(25000, $calc->totalHorsTaxe([
-    ['label' => 'Produit A', 'quantite' => 2, 'prixUnitaire' => 10000],
-    ['label' => 'Produit B', 'quantite' => 1, 'prixUnitaire' => 5000],
+    ['quantite' => 2, 'prixUnitaire' => 10000],
+    ['quantite' => 1, 'prixUnitaire' => 5000],
 ]));
 ```
 
-**Critère de recette** :
-- ✅ Test `testTotalHorsTaxe` passe (exit code 0)
-- ✅ Assertion `assertSame(25000, ...)` ne lève pas d'exception
-- ✅ Durée de test < 1 seconde
-
-**Preuve** : `tests/InvoiceCalculatorTest.php:16`
-
+**Test PHPUnit** : `testTotalHorsTaxe` (`tests/InvoiceCalculatorTest.php:16`)  
+**Critère de recette** : test passe, assertion exacte (25000), durée < 1s  
 **Confiance** : **high** (testé, nominal)
 
 ---
 
-### Test A2 : Calcul du TTC au taux standard (16 %)
+### Test A2 : Calcul TTC au taux standard avec taux explicite (16 %)
 
-**Objectif** : vérifier que le calcul TTC applique correctement la TGC standard
+**Objectif** : vérifier que le calcul TTC applique le taux spécifié par ligne
 
-**Étapes** :
+**Cas** : `HT=10000, taux=0.16 → 10000 × 1.16 = 11600 F CFP`
 
-1. Exécuter `composer test`
-2. Localiser le test `testTotalTtcTauxStandard` dans la sortie
-
-**Assertion attendue** :
+**Assertion** :
 ```php
-// HT=10000 F CFP, taux=16 % → TTC = 10000 × 1.16 = 11600 F CFP
 $this->assertSame(11600, $calc->totalTtc([
-    ['label' => 'Produit', 'quantite' => 1, 'prixUnitaire' => 10000],
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16],
 ]));
 ```
 
-**Calcul justifié** : `(int) round(10000 × 1.16) = 11600` (pas d'arrondi intermédiaire requis ici)
-
-**Critère de recette** :
-- ✅ Test `testTotalTtcTauxStandard` passe
-- ✅ Assertion `assertSame(11600, ...)` exacte (pas d'écart ±1)
-
-**Preuve** : `tests/InvoiceCalculatorTest.php:24`
-
+**Test PHPUnit** : `testTotalTtcTauxStandard` (`tests/InvoiceCalculatorTest.php:24`)  
+**Critère de recette** : test passe, assertion exacte (11600), taux appliqué correctement  
 **Confiance** : **high** (testé, nominal)
 
 ---
 
-### Test A3 : Calcul du TTC au taux réduit (5 %)
+### Test A3 : Calcul TTC au taux réduit avec taux explicite (5 %)
 
-**Objectif** : vérifier que le calcul TTC applique correctement la TGC réduite
+**Objectif** : vérifier que le calcul TTC applique le taux réduit
 
-**Étapes** :
+**Cas** : `HT=10000, taux=0.05 → 10000 × 1.05 = 10500 F CFP`
 
-1. Exécuter `composer test`
-2. Localiser le test `testTotalTtcTauxReduit` dans la sortie
-
-**Assertion attendue** :
+**Assertion** :
 ```php
-// HT=10000 F CFP, taux=5 % → TTC = 10000 × 1.05 = 10500 F CFP
 $this->assertSame(10500, $calc->totalTtc([
-    ['label' => 'Produit première nécessité', 'quantite' => 1, 'prixUnitaire' => 10000],
-], true));  // $tauxReduit = true
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05],
+]));
 ```
 
-**Calcul justifié** : `(int) round(10000 × 1.05) = 10500`
-
-**Critère de recette** :
-- ✅ Test `testTotalTtcTauxReduit` passe
-- ✅ Assertion `assertSame(10500, ...)` exacte
-
-**Preuve** : `tests/InvoiceCalculatorTest.php:31`
-
+**Test PHPUnit** : `testTotalTtcTauxReduit` (`tests/InvoiceCalculatorTest.php:31`)  
+**Critère de recette** : test passe, assertion exacte (10500)  
 **Confiance** : **high** (testé, nominal)
 
 ---
 
-### Test A4 : Exécution de la suite PHPUnit complète
+### Test A4 : Calcul TTC à taux mixte (nouvelle capacité)
 
-**Objectif** : valider que tous les tests s'exécutent et que le bootstrap fonctionne
+**Objectif** : vérifier qu'une facture peut mélanger taux standard et taux réduit
 
-**Étapes** :
+**Cas** : ligne 1 à 16 % (11600 F) + ligne 2 à 5 % (10500 F) = 22100 F
 
-1. Nettoyer les caches : `rm -rf vendor/` (optionnel)
-2. Installer les dépendances : `composer install`
-3. Exécuter la suite : `composer test` (ou `phpunit` directement)
-
-**Sortie attendue** :
-```
-PHPUnit 11.x.x ...
-Tests: 3, Assertions: 3, OK.
+**Assertion** :
+```php
+$this->assertSame(22100, $calc->totalTtc([
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16],  // 11600
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05],  // 10500
+]));
 ```
 
-**Critères de recette** :
-- ✅ Exit code = 0 (succès)
-- ✅ 3 tests exécutés
-- ✅ 0 erreurs, 0 failures
+**Test PHPUnit** : `testTotalTtcTauxMixte` (`tests/InvoiceCalculatorTest.php:34`)  
+**Critère de recette** : test passe, somme exacte (22100), taux multiples appliqués correctement  
+**Confiance** : **high** (testé, limitation d'origine levée)
 
-**Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap
+---
 
-**Confiance** : **high** (techniquement testable)
+### Test A5 : Taux par défaut si absent
+
+**Objectif** : vérifier que l'absence de clé `taux` replie sur `TGC_STANDARD` (0.16 / 16 %)
+
+**Cas** : pas de clé `taux` → taux par défaut 16 %
+
+**Assertion** :
+```php
+$this->assertSame(11600, $calc->totalTtc([
+    ['quantite' => 1, 'prixUnitaire' => 10000],  // sans 'taux'
+]));
+```
+
+**Test PHPUnit** : `testTotalTtcSansTauxUtiliseTauxStandard` (`tests/InvoiceCalculatorTest.php:47`)  
+**Critère de recette** : test passe, repli sur 16 % confirmé  
+**Attention** : ce repli silencieux sans signal d'erreur peut induire une facturation incorrecte si le consommateur omet `taux` pour une ligne qui devrait être à 5 %
+
+---
+
+## Bloc B — Tests d'exception (couvert par PHPUnit)
+
+### Test B1 : Exception clé `quantite` manquante dans HT
+
+**Objectif** : vérifier que l'absence de clé `quantite` lève `\InvalidArgumentException`
+
+**Assertion** :
+```php
+$this->expectException(\InvalidArgumentException::class);
+$calc->totalHorsTaxe([
+    ['prixUnitaire' => 10000],  // manque 'quantite'
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:54`  
+**Critère de recette** : exception levée, type exact `InvalidArgumentException`
+
+---
+
+### Test B2 : Exception clé `prixUnitaire` manquante dans HT
+
+**Objectif** : vérifier que l'absence de clé `prixUnitaire` lève `\InvalidArgumentException`
+
+**Assertion** :
+```php
+$this->expectException(\InvalidArgumentException::class);
+$calc->totalHorsTaxe([
+    ['quantite' => 1],  // manque 'prixUnitaire'
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:62`  
+**Critère de recette** : exception levée
+
+---
+
+### Test B3 : Exception clé `quantite` manquante dans TTC
+
+**Objectif** : vérifier que l'absence de clé `quantite` lève `\InvalidArgumentException` dans `totalTtc`
+
+**Assertion** :
+```php
+$this->expectException(\InvalidArgumentException::class);
+$calc->totalTtc([
+    ['prixUnitaire' => 10000],  // manque 'quantite'
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:70`  
+**Critère de recette** : exception levée
+
+---
+
+### Test B4 : Exception clé `prixUnitaire` manquante dans TTC
+
+**Objectif** : vérifier que l'absence de clé `prixUnitaire` lève `\InvalidArgumentException` dans `totalTtc`
+
+**Assertion** :
+```php
+$this->expectException(\InvalidArgumentException::class);
+$calc->totalTtc([
+    ['quantite' => 1],  // manque 'prixUnitaire'
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:78`  
+**Critère de recette** : exception levée
+
+---
+
+### Test B5 : Exception ligne sans clé requise
+
+**Objectif** : vérifier qu'une ligne sans aucune clé requise lève `\InvalidArgumentException`
+
+**Assertion** :
+```php
+$this->expectException(\InvalidArgumentException::class);
+$calc->totalTtc([
+    [],  // ligne vide
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:86`  
+**Critère de recette** : exception levée
+
+---
+
+### Test B6 : Exception dépassement `PHP_INT_MAX` dans HT
+
+**Objectif** : vérifier que le total HT dépassant `PHP_INT_MAX` lève `\OverflowException`
+
+**Cas** : calcul produisant un résultat > `PHP_INT_MAX` (ex. `PHP_INT_MAX + 1`)
+
+**Assertion** :
+```php
+$this->expectException(\OverflowException::class);
+$calc->totalHorsTaxe([
+    ['quantite' => (PHP_INT_MAX / 1000) + 1, 'prixUnitaire' => 1000],
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:89`  
+**Critère de recette** : exception levée, type exact `OverflowException`
+
+---
+
+### Test B7 : Exception dépassement `PHP_INT_MAX` dans TTC
+
+**Objectif** : vérifier que le total TTC dépassant `PHP_INT_MAX` lève `\OverflowException`
+
+**Cas** : calcul TTC produisant un résultat > `PHP_INT_MAX`
+
+**Assertion** :
+```php
+$this->expectException(\OverflowException::class);
+$calc->totalTtc([
+    ['quantite' => (PHP_INT_MAX / 1000) + 1, 'prixUnitaire' => 1000, 'taux' => 0.16],
+]);
+```
+
+**Test PHPUnit** : `tests/InvoiceCalculatorTest.php:96`  
+**Critère de recette** : exception levée
 
 ---
 
 ## Bloc C — Tests techniques (infrastructure et dépendances)
 
-### Test C1 : Dépendance Monolog présente et correcte
+### Test C1 : Dépendance Monolog 3.x présente et correcte
 
-**Objectif** : vérifier que Monolog 1.x est correctement installée
+**Objectif** : vérifier que Monolog 3.x est correctement installée (migré depuis 1.x)
 
 **Étapes** :
 
-1. Exécuter `composer show` ou `composer show monolog/monolog`
-2. Vérifier la version
+1. Exécuter `composer show monolog/monolog`
 
 **Sortie attendue** :
 ```
-monolog/monolog  1.25.0 (ou supérieure, <2.0)
+monolog/monolog  3.10.0 (ou supérieure dans 3.x)
 ```
 
 **Critère de recette** :
-- ✅ Version majeure = 1 (pas de Monolog 2.x ni 3.x)
-- ✅ Version >= 1.25 (mineure satisfait `^1.25`)
+- ✅ Version majeure = 3
+- ✅ Version >= 3.0 (satisfait `^3.0`)
+- ✅ `composer.lock` verrouille la version exacte
 
-**Preuve** : `composer.json:8` déclare `^1.25`
+**Preuve** : `composer.json:8` déclare `^3.0`, `composer.lock` verrouille 3.10.0
 
-**Confiance** : **high** (contrôlable techniquement)
+**Note** : migration effectuée 2026-08-08, API mises à jour (`info()`/`error()` au lieu de `addInfo()`/`addError()`)
 
 ---
 
+### Test C2 : PHP version >= 8.1
 
-### Test C2 : PHP version >= 8.0
-
-**Objectif** : vérifier que l'environnement d'exécution satisfait la contrainte
+**Objectif** : vérifier que l'environnement d'exécution satisfait la contrainte PHP 8.1
 
 **Étapes** :
 
 1. Exécuter `php --version`
-2. Extraire le numéro de version majeure
+2. Extraire le numéro de version majeure.mineure
 
 **Sortie attendue** :
 ```
-PHP 8.0.0 (ou supérieure)
+PHP 8.1.0 (ou supérieure)
 ```
 
 **Critère de recette** :
-- ✅ Version majeure >= 8
+- ✅ Version majeure.mineure >= 8.1
 
-**Preuve** : `composer.json:6` déclare `>=8.0`
+**Preuve** : `composer.json:7` déclare `>=8.1`
 
-**Confiance** : **high** (vérifiable simplement)
+**Note** : incohérence détectée — `README.md:7` annonce PHP 8.0, correction nécessaire
+
+---
+
+### Test C3 : Exécution complète de la suite PHPUnit
+
+**Objectif** : valider que l'ensemble des 12 tests s'exécute et que le bootstrap fonctionne
+
+**Étapes** :
+
+1. Nettoyer (optionnel) : `rm -rf vendor/`
+2. Installer : `composer install`
+3. Exécuter : `composer test` (ou `phpunit` directement)
+
+**Sortie attendue** :
+```
+PHPUnit 10.5.x (ou supérieure) ...
+Tests: 12, Assertions: >= 12, OK.
+```
+
+**Critères de recette** :
+- ✅ Exit code = 0 (succès)
+- ✅ 12 tests exécutés
+- ✅ 0 erreurs, 0 failures
+- ✅ Durée < 2 secondes
+
+**Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap
 
 ---
 
 ## Bloc D — Points de vigilance pour évolutions futures
 
-| Point | Critère | État | Action requise |
+| Point | Priorité | État | Action requise |
 |---|---|---|---|
-| Point | Priorité | Note |
-|---|---|---|
-| **Pas de `composer.lock`** | Moyen | Créer et versionner pour reproductibilité |
-| **`AppLogger` non testé** | Moyen | Ajouter `tests/AppLoggerTest.php` si l'évolution justifie la couverture |
-| **Pas de `<coverage>` en PHPUnit** | Moyen | Configurer en `phpunit.xml` si une mesure de couverture devient utile |
-| **Montée de version Monolog** | Moyen | Vérifier la compatibilité de l'API avant toute montée majeure |
-| **Pas d'interface `AppLogger`** | Faible | Extraire `LoggerInterface` si le besoin de mock/substitution émerge |
+| **Incohérence PHP 8.0 vs 8.1** | Moyen | README.md dit 8.0, composer.json dit 8.1 | Corriger README.md:7 → 8.1 |
+| **Incohérence composer.lock** | Moyen | README.md dit « non versionné », fichier est présent | Corriger README.md:13 |
+| **`AppLogger` non testé** | Moyen | Zéro test pour cette classe | Ajouter `tests/AppLoggerTest.php` (au min. test de construction) |
+| **Taux par défaut silencieux** | Moyen | Absence de `taux` → 16 % sans signal | Documenter dans README.md (risque 16 % au lieu de 5 %) |
+| **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `> 1.0` | Documenter ou valider (`0 ≤ taux ≤ 1.0`) |
+| **Facture vide non rejetée** | Faible | `totalTtc([])` = 0 F CFP sans erreur | Clarifier : volontaire ou erreur ? |
+| **Pas d'interface `AppLogger`** | Faible | Logger instancié directement (pas d'injection) | Extraire `LoggerInterface` si besoin mock/substitution |
 
 ---
 
 ## Résumé des résultats attendus
 
-### Bloc A — Tests d'exécution (PHPUnit)
+### Bloc A — Tests nominaux (PHPUnit)
 
 ```
-✓ testTotalHorsTaxe        PASS
-✓ testTotalTtcTauxStandard PASS
-✓ testTotalTtcTauxReduit   PASS
-────────────────────────────────
-Tests : 3, Assertions : 3
-Failures : 0, Errors : 0
+✓ testTotalHorsTaxe                        PASS
+✓ testTotalTtcTauxStandard                 PASS
+✓ testTotalTtcTauxReduit                   PASS
+✓ testTotalTtcTauxMixte                    PASS
+✓ testTotalTtcSansTauxUtiliseTauxStandard  PASS
 ```
 
-**Exit code** : 0
+### Bloc B — Tests d'exception (PHPUnit)
+
+```
+✓ testTotalHorsTaxeClePrixUnitaireAbsente       PASS
+✓ testTotalHorsTaxeCleQuantiteAbsente           PASS
+✓ testTotalTtcClePrixUnitaireAbsente            PASS
+✓ testTotalTtcCleQuantiteAbsente                PASS
+✓ testLigneSansCleMissingAllKeys                PASS
+✓ testTotalHorsTaxeOverflowException            PASS
+✓ testTotalTtcOverflowException                 PASS
+```
 
 ### Bloc C — Infrastructure
 
 | Test | Résultat attendu |
 |---|---|
-| C1 (Monolog version) | 1.25 ou supérieure < 2.0 |
-| C2 (PHP version) | >= 8.0 |
+| C1 (Monolog version) | 3.10.0 ou supérieure < 4.0 |
+| C2 (PHP version) | >= 8.1 |
+| C3 (PHPUnit suite) | 12 tests, 0 erreurs, exit 0 |
+
+---
+
+## Résumé global
+
+```
+Bloc A (Nominaux)  : 5 tests ✓
+Bloc B (Exceptions): 7 tests ✓
+Bloc C (Infrastructure) : 3 checks ✓
+────────────────────────────────
+Total: 12 tests + infrastructure
+Verdict: PASS (si tous les critères sont met)
+```
 
 ---
 
@@ -249,7 +398,8 @@ Failures : 0, Errors : 0
 
 - **Testeur** : _________________
 - **Date** : _________________
-- **Bloc A (tests unitaires)** : ✅ pass / ❌ fail
+- **Bloc A (tests nominaux)** : ✅ pass / ❌ fail
+- **Bloc B (tests d'exception)** : ✅ pass / ❌ fail
 - **Bloc C (infrastructure)** : ✅ pass / ❌ fail
 - **Verdict global** : ✅ Recette OK / ❌ Recette refusée
 
@@ -260,5 +410,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30`  
-**Date de dernière vérification** : 2026-08-04
+**SHA référence** : `192d0476d7cacc3f7c3b4c5e0c8e8a1e5b7c8d9f` (HEAD post-audit SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)  
+**Date de dernière mise à jour** : 2026-08-08  
+**Audits de référence** : TESTING_AUDIT.md (SHA 7ef6351)  
+**Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)

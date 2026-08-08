@@ -35,12 +35,12 @@ Cet index recense **tous les fichiers** publiés dans `.onboarding/` de ce works
 
 | Type | Domaine(s) | Workflow | Dépôt | Fichier | Date | Version SHA | Niveau de preuve | Titre |
 |---|---|---|---|---|---|---|---|---|
-| audit | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `audits/ARCHITECTURE_AUDIT.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Architecture minimale, pas d'orchestration interne, risque migration Monolog 2.x, pas de `composer.lock` |
-| audit | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `audits/DATA_MODEL_AUDIT.md` | 2026-08-04 | 5f5c8ee | établi | Pas de persistance, pas d'ORM, structures en mémoire seule, pas de base de données |
-| audit | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `audits/FUNCTIONAL_AUDIT.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Périmètre cohérent mais étroit, limitation taux mixte, aucun test d'intégration, hypothèse conformité TGC polynésienne |
-| audit | — | — | shift-pilot-php | `audits/CODE_HOTSPOTS_AUDIT.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Points chauds : constantes TGC, pas de validation, API Monolog 1.x, arrondi non documenté |
-| audit | — | — | shift-pilot-php | `audits/SECURITY_ROBUSTNESS_AUDIT.md` | 2026-08-04 | 5f5c8ee | établi | Aucune injection, pas d'accès réseau, pas d'accès fichier hors stderr, pas de secret ; risques mineurs sur validation |
-| audit | — | — | shift-pilot-php | `audits/TESTING_AUDIT.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | 3 tests nominaux couverts, `AppLogger` non testé, pas de couverture configurée, reproductibilité compromise sans `composer.lock` |
+| audit | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `audits/ARCHITECTURE_AUDIT.md` | 2026-08-08 | 7ef6351 | contient une hypothèse | Architecture minimale, migration Monolog 3.x réalisée, taux par ligne, incohérence version PHP dans README, pas de `composer.lock` |
+| audit | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `audits/DATA_MODEL_AUDIT.md` | 2026-08-08 | 7ef6351 | contient une hypothèse | Pas de persistance, ligne de facture avec `taux?: float` par ligne, gardes isset ajoutées, taux non validé en plage |
+| audit | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `audits/FUNCTIONAL_AUDIT.md` | 2026-08-08 | 7ef6351 | contient une hypothèse | Taux mixtes maintenant supportés, limitation taux unique résolue, taux par défaut silencieux, mode d'arrondi non documenté |
+| audit | — | — | shift-pilot-php | `audits/CODE_HOTSPOTS_AUDIT.md` | 2026-08-08 | 7ef6351 | contient une hypothèse | Migration Monolog 3.x réalisée, gardes ajoutées, taux par ligne, taux non validé en plage, AppLogger sans test |
+| audit | — | — | shift-pilot-php | `audits/SECURITY_ROBUSTNESS_AUDIT.md` | 2026-08-08 | 7ef6351 | contient une hypothèse | Aucune injection, gardes isset + InvalidArgumentException ajoutées, OverflowException ajoutée, valeurs négatives non rejetées |
+| audit | — | — | shift-pilot-php | `audits/TESTING_AUDIT.md` | 2026-08-08 | 7ef6351 | contient une hypothèse | 12 tests (nominaux, taux mixtes, exceptions), `AppLogger` non testé, pas de couverture configurée, pas de `composer.lock` |
 
 ---
 
@@ -50,10 +50,10 @@ Cet index recense **tous les fichiers** publiés dans `.onboarding/` de ce works
 
 | Type | Domaine(s) | Workflow | Dépôt | Fichier | Date | Version SHA | Niveau de preuve | Titre |
 |---|---|---|---|---|---|---|---|---|
-| document | — | — | shift-pilot-php | `documents/PROJECT_CONTEXT.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Contexte métier, structure du dépôt, domaines, périmètre couvert/absent, fragilités repérées, charge de travail |
-| document | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `documents/CDC_FONCTIONNEL.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Cahier des charges : contexte, acteurs, parcours utilisateur, 12 règles métier, données, cas limites documentés |
-| document | — | — | shift-pilot-php | `documents/CARTOGRAPHIE_CODE.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Navigation dans le code source : deux classes, constantes TGC, dépendances Composer, risques et dettes identifiés |
-| document | — | — | shift-pilot-php | `documents/CAHIER_RECETTE.md` | 2026-08-04 | 5f5c8ee | contient une hypothèse | Plan de test : 4 cas PHPUnit couverts, 4 cas limites à adresser, 4 tests infra, scénarios d'intégration (app hôte) |
+| document | — | — | shift-pilot-php | `documents/PROJECT_CONTEXT.md` | 2026-08-08 | 192d047 | contient une hypothèse | ✅ Mise à jour — contexte métier, structure du dépôt (Monolog 3.x, composer.lock), domaines, fragilités (incohérences PHP/docs détectées), taux mixte levé |
+| document | facturation-tgc, journalisation-applicative | — | shift-pilot-php | `documents/CDC_FONCTIONNEL.md` | 2026-08-08 | 192d047 | contient une hypothèse | ✅ Mise à jour — cahier des charges : API taux par ligne (taux mixte supporté), gardes InvalidArgumentException/OverflowException, Monolog 3.x, 12 règles métier, données |
+| document | — | — | shift-pilot-php | `documents/CARTOGRAPHIE_CODE.md` | 2026-08-08 | 192d047 | contient une hypothèse | ✅ Mise à jour — cartographie : 57 lignes InvoiceCalculator (gardes + taux par ligne), AppLogger 30 lignes (Monolog 3.x), 12 tests, zones critiques |
+| document | — | — | shift-pilot-php | `documents/CAHIER_RECETTE.md` | 2026-08-08 | 192d047 | contient une hypothèse | ✅ Mise à jour — plan de test : 12 cas PHPUnit (5 nominaux + 7 exceptions), composer.lock 3.10.0, PHP 8.1 requis, AppLogger non testé |
 
 ---
 
@@ -120,12 +120,12 @@ Cet index recense **tous les fichiers** publiés dans `.onboarding/` de ce works
 
 | Dimension | Confiance | Réserves |
 |---|---|---|
-| **Code source lu** | high | Intégralité de `src/` vérifiée, 32 et 30 lignes |
-| **Règles métier identifiées** | high | 12 règles documentées, préuvées ou questionnées |
-| **Architecture comprise** | high | Deux classes, zéro dépendance croisée, une fragilité Monolog 1.x |
-| **Couverture de test** | medium | 3 tests nominaux, `AppLogger` non testé, cas limites non couverts |
+| **Code source lu** | high | Intégralité de `src/` vérifiée (57 et 30 lignes) ; réconciliation au SHA `192d047` (2026-08-08) |
+| **Règles métier identifiées** | high | 12 règles documentées, préuvées ou questionnées ; taux par ligne implémenté et testé |
+| **Architecture comprise** | high | Deux classes, zéro dépendance croisée, Monolog 3.x, taux par ligne, gardes (InvalidArgumentException, OverflowException) |
+| **Couverture de test** | medium | 12 tests sur `InvoiceCalculator` (nominaux, mixtes, exceptions) ; `AppLogger` non testé, pas de couverture configurée |
 | **Conformité réglementaire** | low | Taux TGC supposés polynésiens, non sourcés ; mode d'arrondi non documenté |
-| **Reproductibilité des builds** | low | Pas de `composer.lock`, Monolog peut varier |
+| **Reproductibilité des builds** | high | ✅ `composer.lock` présent et versionné (Monolog 3.10.0, PHPUnit 10.5) depuis 2026-08-08 |
 
 ---
 
@@ -154,21 +154,43 @@ Cet index recense **tous les fichiers** publiés dans `.onboarding/` de ce works
 
 ---
 
-## Notes de réconciliation (run CLA-176)
+## Notes de réconciliation (run CLA-176 + SHIAAAAAAAAAAAAAAAAAAAAAAAA-502)
 
-Le `.onboarding/` préexistait dans le checkout (jamais poussé sur le distant, run CLA-169). Le présent run (CLA-176, étape 4) a :
+Le `.onboarding/` préexistait dans le checkout (jamais poussé sur le distant, run CLA-169 + CLA-176). Le présent run (SHIAAAAAAAAAAAAAAAAAAAAAAAA-502, étape 4 finale) a :
 
-1. **Validé** que tous les artefacts d'analyse (domaines, workflows, audits) restent exacts au SHA courant (`5f5c8ee`)
-2. **Produit** les quatre documents de référence (PROJECT_CONTEXT, CDC_FONCTIONNEL, CARTOGRAPHIE_CODE, CAHIER_RECETTE)
-3. **Confirmé** l'absence de dérive dans le code source
-4. **Indexé** l'ensemble des artefacts (22 fichiers) dans ce document
+1. **Validé** l'état des artefacts d'analyse post-audit (SHA courant `192d047`)
+2. **Mis à jour intégralement** les quatre documents de référence pour refléter :
+   - Taux par ligne (limitaton « taux unique » levée, taux mixtes supportés)
+   - Monolog 3.x (migré depuis 1.x)
+   - Gardes InvalidArgumentException/OverflowException ajoutées
+   - 12 tests (5 nominaux + 7 exceptions) couvrant InvoiceCalculator
+   - AppLogger non testé (risque identifié à adresser)
+   - Incohérences PHP 8.0/8.1 et composer.lock détectées et documentées
+3. **Confirmé** l'absence de dérive dans le code source (audit réconciliation 2026-08-08)
+4. **Indexé** l'ensemble des artefacts (27 fichiers) dans ce document
 
-**Aucune modification du code source n'a eu lieu** — la documentation est une pure synthèse.
+**Aucune modification du code source n'a eu lieu** — la documentation a été mise à jour pour synchroniser avec l'état post-audit du code.
+
+---
+
+## Notes de réconciliation — audits (2026-08-08, SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)
+
+Le code a évolué significativement entre le SHA `5f5c8ee` (première version des audits) et le SHA courant `7ef6351`. Les six audits ont été entièrement mis à jour pour refléter l'état courant du dépôt. Écarts principaux traités :
+
+1. **Migration Monolog 1.x → 3.x** — `AppLogger` utilise désormais `info()`/`error()` ; `composer.json` déclare `^3.0`. Les références à l'API obsolète et au risque de migration ont été mises à jour.
+2. **Gardes d'entrée ajoutées** — `isset` + `\InvalidArgumentException` dans `totalHorsTaxe` et `totalTtc` ; `\OverflowException` sur dépassement `PHP_INT_MAX`. Les dettes de robustesse correspondantes sont résolues.
+3. **`totalTtc` par ligne** — le paramètre `bool $tauxReduit` a disparu ; chaque ligne porte un `taux?: float` optionnel avec repli sur `TGC_STANDARD`. La limitation « taux unique par facture » est résolue.
+4. **12 tests** (était 3) — ajout de tests taux mixte, taux par défaut, InvalidArgumentException (5 cas), OverflowException (2 cas).
+5. **PHP `>=8.1`** dans `composer.json` — incohérence détectée avec `README.md:7` qui annonce `>= 8.0`.
+
+**Aucune modification du code source n'a eu lieu lors de cette réconciliation** — seuls les fichiers d'audit et l'index ont été mis à jour.
 
 ---
 
 **Workspace** : `shift-pilot-php`  
 **Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30` (HEAD = origin/main)  
-**Date de dernière génération** : 2026-08-04  
+**SHA audit** : `7ef6351` (2026-08-08 SHIAAAAAAAAAAAAAAAAAAAAAAAA-500 — audits réconciliés)  
+**SHA courant (HEAD)** : `192d047` (2026-08-08 SHIAAAAAAAAAAAAAAAAAAAAAAAA-500 — fix qualification VÉRIFIÉ_CODE/HYPOTHÈSE)  
+**SHA documents** : mis à jour au SHA `192d047` (2026-08-08)  
+**Date de dernière mise à jour documents** : 2026-08-08  
 **Agent responsable** : Rédacteur (rediger-documents)
