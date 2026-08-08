@@ -19,7 +19,6 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 - Enregistrer les événements de facturation sur un logger configuré
 
 **Limitations** :
-- Ne peut pas calculer une facture mixte (lignes à 16 % et lignes à 5 % dans le même appel)
 - Ne peut pas remplacer le logger Monolog sans modifier la classe `AppLogger`
 - Ne peut pas accéder aux entités persistées (aucune persistance dans ce dépôt)
 
@@ -135,10 +134,10 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 
 #### R1 — Ligne de facture
 - **Énoncé** : une ligne de facture contient au minimum une quantité et un prix unitaire
-- **Format** : tableau associatif PHP avec au minimum les clés `quantite: int, prixUnitaire: int` ; la clé `label` est optionnelle et ignorée
-- **Validation** : aucune — accès direct aux clés `quantite` et `prixUnitaire` sans garde
-- **Preuve** : `src/InvoiceCalculator.php:21-26` n'accède qu'à `quantite` et `prixUnitaire`
-- **Impact sur dev** : l'appelant doit garantir que chaque ligne a au minimum les clés `quantite` et `prixUnitaire`
+- **Format** : tableau associatif PHP avec au minimum les clés `quantite: int, prixUnitaire: int` ; la clé `label` est optionnelle et ignorée ; la clé `taux` est optionnelle (défaut `TGC_STANDARD` 0.16)
+- **Validation** : validation stricte — accès aux clés `quantite` et `prixUnitaire` avec garde `\InvalidArgumentException` si absentes
+- **Preuve** : `src/InvoiceCalculator.php:23-25` valide `quantite` et `prixUnitaire`, lève `\InvalidArgumentException` si absentes
+- **Impact sur dev** : les clés obligatoires doivent être présentes ; une ligne mal formée lève une exception, ne produit pas un calcul incorrect
 
 #### R2 — Montant hors taxe (HT)
 - **Énoncé** : le montant HT d'une facture est la somme des produits quantité × prix unitaire pour chaque ligne
@@ -148,17 +147,17 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 - **Impact sur dev** : aucune remise, aucune ristourne ne s'applique au niveau ligne — c'est une addition pure
 
 #### R3 — Taux TGC standard
-- **Énoncé** : la TGC standard s'applique au taux de 16 %
+- **Énoncé** : la TGC standard s'applique au taux de 16 % par défaut si la ligne ne spécifie pas de taux
 - **Constante** : `TGC_STANDARD = 0.16` (`src/InvoiceCalculator.php:11`)
-- **Condition d'application** : paramètre `$tauxReduit = false` (défaut)
-- **Preuve** : `src/InvoiceCalculator.php:11`, test `testTotalTtcTauxStandard`
+- **Condition d'application** : clé `taux` absente de la ligne — repli silencieux sur 16 %
+- **Preuve** : `src/InvoiceCalculator.php:11`, test `testTotalTtcTauxStandard` et `testTotalTtcSansTauxUtiliseTauxStandard`
 - **HYPOTHÈSE de conformité** : ce taux correspond aux normes TGC polynésiennes (non sourcé dans le dépôt)
 
-#### R4 — Taux TGC réduit
-- **Énoncé** : une TGC réduite au taux de 5 % peut être appliquée à une facture entière
+#### R4 — Taux TGC réduit (par ligne)
+- **Énoncé** : une TGC réduite au taux de 5 % peut être appliquée à une ou plusieurs lignes via la clé `taux`
 - **Constante** : `TGC_REDUIT = 0.05` (`src/InvoiceCalculator.php:12`)
-- **Condition d'application** : paramètre `$tauxReduit = true`
-- **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit`
+- **Condition d'application** : spécification explicite `taux: 0.05` dans la ligne
+- **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit` et `testTotalTtcTauxMixte`
 - **HYPOTHÈSE métier** : ce taux est destiné à certains produits (ex. première nécessité) selon la réglementation TGC polynésienne (non sourcé dans le dépôt)
 
 #### R5 — Montant TTC et arrondi
@@ -213,7 +212,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 
 #### R12 — Aucun traitement du message en sortie
 - **Énoncé** : la bibliothèque ne filtre, n'enrichit ni ne formate les messages — elle les transmet tels quels à Monolog
-- **Preuve** : `src/AppLogger.php:23,28` (appels directs à `$this->logger->addInfo()` / `addError()`)
+- **Preuve** : `src/AppLogger.php:23,28` (appels directs à `$this->logger->info()` / `error()`, API Monolog 3.x)
 - **Impact dev** : le formatage des logs relève de la configuration Monolog côté application hôte
 
 ## Données
@@ -311,6 +310,6 @@ La bibliothèque **ne garantit pas** :
 ---
 
 **Branche** : `main`  
-**SHA référence** : `192d0476d7cacc3f7c3b4c5e0c8e8a1e5b7c8d9f` (HEAD après fix SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)  
+**SHA référence** : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant, documents de référence mis à jour)  
 **Date de dernière mise à jour** : 2026-08-08  
-**Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md (SHA 7ef6351)
+**Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

@@ -2,7 +2,9 @@
 
 ## Introduction
 
-Ce cahier définit les **critères de recette** permettant de valider que la bibliothèque shift-pilot-php remplit ses engagements fonctionnels et techniques. Il couvre les 12 scénarios de test (testés par la suite PHPUnit, mise à jour 2026-08-08) et les points de vérification d'infrastructure.
+Ce cahier définit les **critères de recette** permettant de valider que la bibliothèque shift-pilot-php remplit ses engagements fonctionnels et techniques. Il couvre les 12 scénarios de test (codifiés dans la suite PHPUnit, mise à jour 2026-08-08) et les points de vérification d'infrastructure.
+
+**Note sur le statut** : le cahier distingue `VÉRIFIÉ_CODE` (source lu et validé statiquement) de `OBSERVÉ` (exécution runtime confirmée). L'exécution réelle des tests n'a pas été observée dans l'audit (vendor absent) ; voir section C3 pour plus de détails.
 
 **Portée** : la bibliothèque elle-même. L'intégration dans l'application hôte ne relève pas de ce cahier.
 
@@ -22,7 +24,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `192d0476d7cacc3f7c3b4c5e0c8e8a1e5b7c8d9f` (HEAD post-audit SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)
+- SHA cible : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant)
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -49,8 +51,9 @@ $this->assertSame(25000, $calc->totalHorsTaxe([
 ```
 
 **Test PHPUnit** : `testTotalHorsTaxe` (`tests/InvoiceCalculatorTest.php:16`)  
-**Critère de recette** : test passe, assertion exacte (25000), durée < 1s  
-**Confiance** : **high** (testé, nominal)
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Critère de recette** : test existe, assertion exacte (25000), syntaxe valide  
+**Confiance** : **high** (structure validée, exécution non observée)
 
 ---
 
@@ -68,8 +71,9 @@ $this->assertSame(11600, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcTauxStandard` (`tests/InvoiceCalculatorTest.php:24`)  
-**Critère de recette** : test passe, assertion exacte (11600), taux appliqué correctement  
-**Confiance** : **high** (testé, nominal)
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Critère de recette** : test existe, assertion exacte (11600), taux par ligne appliqué correctement  
+**Confiance** : **high** (structure validée, exécution non observée)
 
 ---
 
@@ -87,8 +91,9 @@ $this->assertSame(10500, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcTauxReduit` (`tests/InvoiceCalculatorTest.php:31`)  
-**Critère de recette** : test passe, assertion exacte (10500)  
-**Confiance** : **high** (testé, nominal)
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Critère de recette** : test existe, assertion exacte (10500)  
+**Confiance** : **high** (structure validée, exécution non observée)
 
 ---
 
@@ -107,8 +112,9 @@ $this->assertSame(22100, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcTauxMixte` (`tests/InvoiceCalculatorTest.php:34`)  
-**Critère de recette** : test passe, somme exacte (22100), taux multiples appliqués correctement  
-**Confiance** : **high** (testé, limitation d'origine levée)
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Critère de recette** : test existe, somme exacte (22100), taux multiples par ligne appliqués correctement  
+**Confiance** : **high** (structure validée, exécution non observée)
 
 ---
 
@@ -126,7 +132,8 @@ $this->assertSame(11600, $calc->totalTtc([
 ```
 
 **Test PHPUnit** : `testTotalTtcSansTauxUtiliseTauxStandard` (`tests/InvoiceCalculatorTest.php:47`)  
-**Critère de recette** : test passe, repli sur 16 % confirmé  
+**Statut** : `VÉRIFIÉ_CODE` — source lu intégralement, assertion arithmétiquement correcte  
+**Critère de recette** : test existe, repli sur 16 % confirmé  
 **Attention** : ce repli silencieux sans signal d'erreur peut induire une facturation incorrecte si le consommateur omet `taux` pour une ligne qui devrait être à 5 %
 
 ---
@@ -327,7 +334,9 @@ Tests: 12, Assertions: >= 12, OK.
 - ✅ 0 erreurs, 0 failures
 - ✅ Durée < 2 secondes
 
-**Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap
+**Statut** : `INCONNU` — exécution runtime n'a pas été observée dans l'audit (vendor absent lors du run). La structure des tests (syntaxe, assertions) est `VÉRIFIÉ_CODE` dans `tests/InvoiceCalculatorTest.php` (12 méthodes existantes, assertions arithmétiquement correctes). L'exécution réelle dépend de l'installation complète de `vendor/` et de la capacité de PHPUnit à charger les classes via `autoload.php`.
+
+**Preuve** : `phpunit.xml` déclare la testsuite et le bootstrap ; l'exécution reste à confirmer par une vraie run
 
 ---
 
@@ -410,7 +419,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : `192d0476d7cacc3f7c3b4c5e0c8e8a1e5b7c8d9f` (HEAD post-audit SHIAAAAAAAAAAAAAAAAAAAAAAAA-500)  
+**SHA référence** : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant)  
 **Date de dernière mise à jour** : 2026-08-08  
-**Audits de référence** : TESTING_AUDIT.md (SHA 7ef6351)  
+**Audits de référence** : TESTING_AUDIT.md  
 **Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)
