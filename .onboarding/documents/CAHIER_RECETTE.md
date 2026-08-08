@@ -24,7 +24,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `a427583bb888cded93d0c720c1b1a2c069643fca` (HEAD courant)
+- SHA cible : `1fdf38faddf576bb801d32d2d0a78619be8768ce` (HEAD courant)
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -34,6 +34,8 @@ Toutes les données sont numériques, en francs CFP entiers. Aucun accès base r
 ---
 
 ## Bloc A — Tests nominaux (couvert par PHPUnit)
+
+**Unités** : les montants HT et TTC sont en **francs CFP entiers** ; la quantité est un nombre entier d'unités (nombre de produits) ; le prix unitaire est en **francs CFP entiers** ; les taux sont des ratios décimaux (ex: 0.16 pour 16 %). Les assertions valident les montants finaux en francs CFP.
 
 ### Test A1 : Calcul du montant hors taxe (HT)
 

@@ -45,7 +45,7 @@ Aucun autre domaine n'est présent dans le code.
 
 ### Ce que la bibliothèque fait
 
-- Agrège une liste de lignes (label, quantité, prix unitaire, taux TGC optionnel en francs CFP entiers)
+- Agrège une liste de lignes (label, quantité entière, prix unitaire en francs CFP, taux TGC optionnel)
 - Calcule le total hors taxe par sommation (`quantité × prixUnitaire`)
 - Applique un taux TGC par ligne (standard 16 % par défaut, ou taux explicite) — supporte les taux mixtes (lignes à 16 % et 5 % sur la même facture)
 - Arrondit au franc CFP entier (`(int) round()`)
@@ -90,7 +90,7 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 ### Ce qu'on sait par hypothèse (`HYPOTHÈSE`)
 
 - Taux TGC (16 % et 5 %) : contexte externe, supposé correspondre aux taux polynésiens. Aucune source légale dans le dépôt — à valider par le board métier
-- Mode d'arrondi : `round()` appelé sans argument explicite — utilise `PHP_ROUND_HALF_UP` par défaut (hypothèse d'implémentation PHP). Conformité avec la réglementation CFP non sourcée dans le dépôt
+- Mode d'arrondi : `round()` appelé sans argument explicite dans `src/InvoiceCalculator.php:28,51` — utiliserait `PHP_ROUND_HALF_UP` par défaut **selon le comportement PHP standard**, non contrôlé explicitement par le code. Conformité avec la réglementation CFP non sourcée dans le dépôt — à valider auprès de l'autorité fiscale polynésienne
 - Taux par défaut silencieux : l'absence de clé `taux` replie sur `TGC_STANDARD` (16 %) sans signal — risque de facturation incorrecte chez un consommateur qui omet `taux` pour une ligne à 5 % (documenté dans le FUNCTIONAL_AUDIT)
 
 **Confiance niveau** : **medium** sur les intentions métier et la conformité réglementaire ; **high** sur la stabilité de la dépendance Monolog 3.x (verrouillée dans `composer.lock`).

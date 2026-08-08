@@ -163,11 +163,11 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 #### R5 — Montant TTC et arrondi
 - **Énoncé** : le montant TTC est calculé en appliquant le taux TGC au HT, puis en arrondissant au franc CFP entier
 - **Formule** : `TTC = (int) round(HT × (1 + taux_TGC))`
-- **Mode d'arrondi** : `PHP_ROUND_HALF_UP` (défaut PHP sans argument explicite)
+- **Mode d'arrondi** : `round()` sans argument explicite — utilise `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
 - **Preuve** : `src/InvoiceCalculator.php:27,45`
 - **Exemple** : HT=10000 F CFP, taux=16 % → `10000 × 1.16 = 11600 F CFP` exact (test `testTotalTtcTauxStandard`)
 - **Exemple** : HT=10000 F CFP, taux=5 % → `10000 × 1.05 = 10500 F CFP` exact (test `testTotalTtcTauxReduit`)
-- **HYPOTHÈSE de conformité** : le mode d'arrondi PHP par défaut est conforme à la réglementation TGC CFP (non sourcé dans le dépôt)
+- **HYPOTHÈSE** : le mode d'arrondi `PHP_ROUND_HALF_UP` respecte la réglementation TGC CFP — à valider auprès de l'autorité fiscale polynésienne (non sourcé dans le dépôt)
 
 #### R6 — Taux par ligne (depuis mise à jour 2026-08-08)
 - **Énoncé** : chaque ligne de facture peut spécifier son propre taux TGC via la clé optionnelle `taux?: float`
@@ -295,13 +295,13 @@ Un appel à une fonction de la bibliothèque est **fonctionnellement correct** s
 3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` lèvent `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent, `\OverflowException` si le résultat dépasse `PHP_INT_MAX`
 4. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel
 5. **Journalisation** : `factureEmise(...)` et `erreurCalcul(...)` ne lèvent pas d'exception et enregistrent sur le logger Monolog 3.x (méthodes `info()` et `error()`)
-6. **Arrondi** : l'arrondi final suit la règle PHP native `round()` sans argument de mode (défaut `PHP_ROUND_HALF_UP`)
+6. **Arrondi** : l'arrondi final utilise `round()` sans argument explicite de mode — applique `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
 
 ## Limites de garantie
 
 La bibliothèque **ne garantit pas** :
 - Que les taux TGC (16 %, 5 %) sont conformes à la réglementation polynésienne actuelle (à valider avec le board)
-- Que le mode d'arrondi PHP par défaut est conforme à la réglementation (à valider avec le board)
+- Que le mode d'arrondi `PHP_ROUND_HALF_UP` (appliqué par `round()` sans argument) est conforme à la réglementation TGC CFP (à valider avec le board/autorité fiscale)
 - Que le logger Monolog 3.x reste accessible ou que sa version majeure suivante ne cassera pas l'API `info()`/`error()`
 - Que la facture vide retourne 0 F CFP par design plutôt que par défaut du langage (à clarifier si besoin)
 - Que la plage du taux fourni par ligne (par ex. `taux: -0.5` ou `taux: 2.0`) produise un résultat valide — toute valeur est acceptée sans validation

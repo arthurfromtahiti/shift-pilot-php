@@ -356,7 +356,7 @@ Déclaré en `composer.json:7` : `"php": ">=8.1"`
 |---|---|---|---|
 | Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:16-33` | ✅ Gardes ajoutées, validation clés + overflow |
 | Taux par ligne | Facturation mixte | `src/InvoiceCalculator.php:48` | ✅ Support des taux mixtes, repli 16 % par défaut |
-| Arrondi final | Exactitude TTC | `src/InvoiceCalculator.php:28,51` | `(int) round()` explicite, `PHP_ROUND_HALF_UP` par défaut |
+| Arrondi final | Exactitude TTC | `src/InvoiceCalculator.php:28,51` | ✅ VÉRIFIÉ_CODE: `(int) round()` sans argument de mode (lignes 28, 51) ; HYPOTHÈSE: applique `PHP_ROUND_HALF_UP` selon le comportement PHP 8.1+ — conformité TGC CFP à valider avec l'autorité fiscale |
 | Construction du logger | Journalisation | `src/AppLogger.php:17-18` | Instanciation directe Monolog, pas d'injection |
 | API `info()`/`error()` | Événements enregistrés | `src/AppLogger.php:23,28` | ✅ Monolog 3.x (migré depuis 1.x) |
 
