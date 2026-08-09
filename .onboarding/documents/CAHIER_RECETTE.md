@@ -4,7 +4,7 @@
 
 Ce cahier définit les **critères de recette** permettant de valider que la bibliothèque shift-pilot-php remplit ses engagements fonctionnels et techniques. Il couvre les 12 scénarios de test (codifiés dans la suite PHPUnit, mise à jour 2026-08-08) et les points de vérification d'infrastructure.
 
-**Note sur le statut** : le cahier distingue `VÉRIFIÉ_CODE` (source lu et validé statiquement) de `OBSERVÉ` (exécution runtime confirmée). L'exécution réelle des tests n'a pas été observée dans l'audit (vendor absent) ; voir section C3 pour plus de détails.
+**Note sur le statut** : le cahier distingue `VÉRIFIÉ_CODE` (source lu et validé statiquement) de `ATTENTE` (exécution runtime à confirmer). L'exécution réelle des tests n'a pas été observée dans l'audit (vendor absent) ; voir section C3 pour plus de détails.
 
 **Portée** : la bibliothèque elle-même. L'intégration dans l'application hôte ne relève pas de ce cahier.
 
@@ -389,11 +389,11 @@ Critères de succès :
 
 Attendus après exécution (`composer test`) :
 ```
-✓ testTotalHorsTaxe                        À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcTauxStandard                 À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcTauxReduit                   À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcTauxMixte                    À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcSansTauxUtiliseTauxStandard  À_OBSERVER (assertions correctes, exécution non observée)
+[ ] testTotalHorsTaxe                        ATTENTE (assertions statiquement correctes, exécution runtime à confirmer)
+[ ] testTotalTtcTauxStandard                 ATTENTE (assertions statiquement correctes, exécution runtime à confirmer)
+[ ] testTotalTtcTauxReduit                   ATTENTE (assertions statiquement correctes, exécution runtime à confirmer)
+[ ] testTotalTtcTauxMixte                    ATTENTE (assertions statiquement correctes, exécution runtime à confirmer)
+[ ] testTotalTtcSansTauxUtiliseTauxStandard  ATTENTE (assertions statiquement correctes, exécution runtime à confirmer)
 ```
 
 ### Bloc B — Tests d'exception (PHPUnit)
@@ -402,13 +402,13 @@ Attendus après exécution (`composer test`) :
 
 Attendus après exécution (`composer test`) :
 ```
-✓ testTotalHorsTaxeClePrixUnitaireAbsente       À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalHorsTaxeCleQuantiteAbsente           À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcClePrixUnitaireAbsente            À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcCleQuantiteAbsente                À_OBSERVER (assertions correctes, exécution non observée)
-✓ testLigneSansCleMissingAllKeys                À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalHorsTaxeOverflowException            À_OBSERVER (assertions correctes, exécution non observée)
-✓ testTotalTtcOverflowException                 À_OBSERVER (assertions correctes, exécution non observée)
+[ ] testTotalHorsTaxeClePrixUnitaireAbsente       ATTENTE (exception levée attendue, exécution runtime à confirmer)
+[ ] testTotalHorsTaxeCleQuantiteAbsente           ATTENTE (exception levée attendue, exécution runtime à confirmer)
+[ ] testTotalTtcClePrixUnitaireAbsente            ATTENTE (exception levée attendue, exécution runtime à confirmer)
+[ ] testTotalTtcCleQuantiteAbsente                ATTENTE (exception levée attendue, exécution runtime à confirmer)
+[ ] testLigneSansCleMissingAllKeys                ATTENTE (exception levée attendue, exécution runtime à confirmer)
+[ ] testTotalHorsTaxeOverflowException            ATTENTE (exception levée attendue, exécution runtime à confirmer)
+[ ] testTotalTtcOverflowException                 ATTENTE (exception levée attendue, exécution runtime à confirmer)
 ```
 
 ### Bloc C — Infrastructure
@@ -429,12 +429,12 @@ Attendus après exécution (`composer test`) :
 - **Bloc C (Infrastructure)** : 3 checks — déclarations `VÉRIFIÉ_CODE` (Monolog 3.x, PHP 8.1), installation `À OBSERVER` en runtime
 
 ```
-Bloc A (Nominaux)  : 5 tests — assertions correctes, exécution À_OBSERVER en runtime
-Bloc B (Exceptions): 7 tests — assertions correctes, exécution À_OBSERVER en runtime
-Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation À_OBSERVER en runtime
+Bloc A (Nominaux)  : 5 tests — assertions statiquement correctes, exécution runtime ATTENTE
+Bloc B (Exceptions): 7 tests — assertions statiquement correctes, exécution runtime ATTENTE
+Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation ATTENTE en runtime
 ────────────────────────────────────────────────────────────────
-Total: 12 tests (structure prouvée, exécution non observée) + infrastructure
-Statut: VÉRIFIÉ_CODE en statique ; verdict À_OBSERVER en runtime selon `composer test`
+Total: 12 tests (structure prouvée statiquement, exécution confirmée par runtime) + infrastructure
+Statut: VÉRIFIÉ_CODE en statique ; verdict ATTENTE en runtime selon `composer test`
 ```
 
 **Important** : Ce cahier valide que les tests **existent** et que leurs assertions sont **arithmétiquement correctes**. Il ne remplace pas l'exécution réelle de `composer test`, qui est l'unique preuve de fonctionnement en runtime.

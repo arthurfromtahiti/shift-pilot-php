@@ -72,7 +72,7 @@ $totalHT = $calc->totalHorsTaxe($lignes);  // → 25000 F CFP
 ```
 
 **Règle appliquée** : R2 — somme des produits `quantite × prixUnitaire`  
-**Preuve statique** : test `testTotalHorsTaxe` existe avec assertion attendue `25000` (exécution À OBSERVER)
+**Preuve statique** : test `testTotalHorsTaxe` existe avec assertion arithmétiquement correcte `25000` ; exécution À OBSERVER
 
 ### Cas 2 : Calcul du TTC au taux standard par ligne
 L'application hôte prépare une ligne avec un taux explicite et appelle `totalTtc()`.
@@ -85,7 +85,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 ```
 
 **Règles appliquées** : R3, R5  
-**Preuve statique** : test `testTotalTtcTauxStandard` existe avec assertion attendue `11600` pour HT=10000 avec taux explicite 0.16 (exécution À OBSERVER)
+**Preuve statique** : test `testTotalTtcTauxStandard` existe avec assertion arithmétiquement correcte `11600` pour HT=10000 avec taux explicite 0.16 ; exécution À OBSERVER
 
 ### Cas 3 : Calcul du TTC au taux réduit par ligne
 L'application hôte spécifie un taux réduit dans la ligne.
@@ -98,7 +98,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 10500 F CFP
 ```
 
 **Règles appliquées** : R4, R5  
-**Preuve statique** : test `testTotalTtcTauxReduit` existe avec assertion attendue `10500` pour HT=10000 avec taux explicite 0.05 (exécution À OBSERVER)
+**Preuve statique** : test `testTotalTtcTauxReduit` existe avec assertion arithmétiquement correcte `10500` pour HT=10000 avec taux explicite 0.05 ; exécution À OBSERVER
 
 ### Cas 4 : Calcul du TTC à taux mixte (nouvelle capacité)
 L'application hôte calcule une facture avec des lignes à taux différents.
@@ -112,7 +112,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 22100 F CFP
 ```
 
 **Règles appliquées** : R3, R4, R5  
-**Preuve statique** : test `testTotalTtcTauxMixte` existe avec assertion attendue `22100` (somme `11600 + 10500`) (exécution À OBSERVER)
+**Preuve statique** : test `testTotalTtcTauxMixte` existe avec assertion arithmétiquement correcte `22100` (somme `11600 + 10500`) ; exécution À OBSERVER
 
 ### Cas 5 : Taux par défaut si absent
 Si une ligne n'inclut pas de clé `taux`, le taux standard 16 % est appliqué.
@@ -125,7 +125,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 ```
 
 **Règles appliquées** : R3, R5  
-**Preuve statique** : test `testTotalTtcSansTauxUtiliseTauxStandard` existe avec assertion attendue `11600` sans clé `taux` (exécution À OBSERVER)  
+**Preuve statique** : test `testTotalTtcSansTauxUtiliseTauxStandard` existe avec assertion arithmétiquement correcte `11600` sans clé `taux` ; exécution À OBSERVER  
 **Attention** : ce repli silencieux (16 % par défaut) peut induire une facturation incorrecte si le consommateur omet volontairement le taux pour une ligne qui devrait être à 5 % — risque documenté mais non guaranti par l'API.
 
 ## Règles métier
@@ -175,7 +175,7 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 - **Implémentation** : `src/InvoiceCalculator.php:48` — `$taux = $ligne['taux'] ?? self::TGC_STANDARD`
 - **Repli par défaut** : si la clé `taux` est absente, le taux standard `TGC_STANDARD` (0.16 / 16 %) s'applique
 - **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) peut désormais être calculée en un seul appel en spécifiant `taux` par ligne
-- **Preuve statique** : `src/InvoiceCalculator.php:41` (signature `totalTtc(array $lignes): int`), test `testTotalTtcTauxMixte` existe avec assertion attendue `22100` (11600 + 10500) — exécution À OBSERVER
+- **Preuve statique** : `src/InvoiceCalculator.php:41` (signature `totalTtc(array $lignes): int`), test `testTotalTtcTauxMixte` existe avec assertion arithmétiquement correcte `22100` (11600 + 10500) ; exécution À OBSERVER
 - **État** : limitation d'origine **levée** — la capacité taux mixte est présente dans le code et couverte par un test ; exécution runtime À OBSERVER
 
 #### R7 — Pas de remise, pas d'avoir
@@ -303,10 +303,10 @@ Un appel à une fonction de la bibliothèque est **fonctionnellement correct** s
 
 1. **Calcul HT** : `totalHorsTaxe(...)` retourne la somme exacte de tous les produits `quantite × prixUnitaire`
 2. **Calcul TTC** : `totalTtc(...)` retourne `(int) round( Σ(quantite × prixUnitaire × (1 + taux_par_ligne)) )` où chaque ligne peut spécifier son propre taux ou replie sur `TGC_STANDARD`
-3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` contiennent le code pour lever `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent, `\OverflowException` si le résultat dépasse `PHP_INT_MAX` (preuves statiques présentes, exécution À OBSERVER)
+3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` contiennent le code pour lever `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent (preuve statique : `src/InvoiceCalculator.php:23-25,45-47` ; test présent ; exécution À OBSERVER), `\OverflowException` si le résultat dépasse `PHP_INT_MAX` (preuve statique : `src/InvoiceCalculator.php:29-31,52-54` ; test présent ; exécution À OBSERVER)
 4. **Structure de ligne** : clé `label` optionnelle et ignorée par le calcul ; clé `taux` optionnelle pour chaque ligne, repli sur `TGC_STANDARD` si absente
-5. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel avec accumulation sans arrondi intermédiaire ; preuve statique présente (test `testTotalTtcTauxMixte` avec assertion attendue `22100`) ; exécution À OBSERVER
-6. **Journalisation — portée du code** : `factureEmise(int $totalTTC): void` et `erreurCalcul(string $message): void` existent et contiennent l'appel à `$this->logger->info()` / `error()` (observation statique confirmée) ; exécution runtime À OBSERVER
+5. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel avec accumulation sans arrondi intermédiaire ; preuve statique présente (test `testTotalTtcTauxMixte` avec assertion arithmétiquement correcte `22100`) ; exécution À OBSERVER
+6. **Journalisation — portée du code** : `factureEmise(int $totalTTC): void` et `erreurCalcul(string $message): void` existent et contiennent l'appel à `$this->logger->info()` / `error()` (preuve statique : `src/AppLogger.php:23,28` ; observation confirmée statiquement) ; exécution runtime À OBSERVER
 7. **Journalisation — résultat final dépend de Monolog externe** : l'écriture effective des logs (destination fichier, syslog, formatage, sérialisation, persistance, gestion d'erreurs du handler) dépend entièrement de la configuration des handlers Monolog côté application hôte ; ce dépôt ne contrôle que la transmission du message jusqu'à Monolog ; garantie de fonctionnement final soumise à exécution runtime observée
 8. **Arrondi** : l'arrondi final utilise `round()` sans argument explicite de mode — applique `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
 
