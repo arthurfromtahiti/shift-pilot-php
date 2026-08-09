@@ -371,8 +371,6 @@ Critères de succès :
 
 | Point | Priorité | État | Action requise |
 |---|---|---|---|
-| **Incohérence PHP 8.0 vs 8.1** | Moyen | README.md dit 8.0, composer.json dit 8.1 | Corriger README.md:7 → 8.1 |
-| **Incohérence composer.lock** | Moyen | README.md dit « non versionné », fichier est présent | Corriger README.md:13 |
 | **`AppLogger` non testé** | Moyen | Zéro test pour cette classe | Ajouter `tests/AppLoggerTest.php` (au min. test de construction) |
 | **Taux par défaut silencieux** | Moyen | Absence de `taux` → 16 % sans signal | Documenter dans README.md (risque 16 % au lieu de 5 %) |
 | **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `> 1.0` | Documenter ou valider (`0 ≤ taux ≤ 1.0`) |

@@ -20,13 +20,13 @@ shift-pilot-php/
 ├── composer.json                 # Dépendances (Monolog 3.x, PHPUnit 10.5)
 ├── composer.lock                 # Verrouille Monolog 3.10.0 (depuis 2026-08-08)
 ├── phpunit.xml                   # Configuration des tests
-└── README.md                      # Présentation du pilote (incohérence PHP 8.0/8.1 détectée)
+└── README.md                      # Présentation du pilote
 ```
 
 **Clés organisationnelles** :
 - Namespace PSR-4 : `App\` → `src/`
 - Tests : namespace `App\Tests\`, route `tests/`
-- **PHP minimum 8.1** (`composer.json:7` — **NOTE** : README.md annonce 8.0, incohérence détectée)
+- **PHP minimum 8.1** (`composer.json:7` et `README.md:7` — cohérence vérifiée)
 - **composer.lock** : présent, versionné (Monolog 3.10.0, PHPUnit 10.5.64)
 - Dépendance unique métier : `monolog/monolog: ^3.0` (Monolog 3.x, migré 2026-08-08)
 
@@ -78,7 +78,7 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 
 - Implémentation lue intégralement : deux fichiers source seuls, pas de code caché
 - Constantes TGC : `TGC_STANDARD = 0.16` et `TGC_REDUIT = 0.05` (confirmées ligne par ligne)
-- **PHP : 8.1** — `composer.json:7` déclare `>=8.1` ; README.md annonce incorrectement 8.0 (incohérence documentaire détectée)
+- **PHP : 8.1** — `composer.json:7` déclare `>=8.1` ; `README.md:7` annonce `>=8.1` (cohérence vérifiée)
 - **12 tests** valident les calculs nominaux, les taux mixtes, le taux par défaut, et les cas d'exception (`\InvalidArgumentException`, `\OverflowException`) — vérifiés en statique ; exécution runtime non observée
 - **Gardes ajoutées** : `\InvalidArgumentException` sur clé manquante, `\OverflowException` sur dépassement `PHP_INT_MAX` (depuis 2026-08-08)
 - **Taux par ligne** : limitation « taux unique » résolue — factures mixtes testées (test `testTotalTtcTauxMixte`, SHA 7ef6351)
@@ -111,15 +111,15 @@ Ces inconnues sont **des questions pour le board**, pas des défauts du livrable
 
 | Point | Gravité | Détail | État |
 |---|---|---|---|
-| **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | Incohérence détectée dans README.md ; vérité : PHP 8.1 |
-| **`composer.lock` versionné** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent et suivi git | **Arbitrage** : `composer.lock` EST présent et versionné, verrouille Monolog 3.10.0 et PHPUnit 10.5.64 ; ceci garantit builds reproductibles |
+| **PHP 8.1** | — | `README.md:7` et `composer.json:7` annoncent `>=8.1` | ✅ Cohérent, PHP 8.1 |
+| **`composer.lock` versionné** | — | `README.md:13` et `composer.lock` : présent, suivi git | ✅ Cohérent, Monolog 3.10.0 et PHPUnit 10.5.64 verrouillés |
 | **`AppLogger` non testé** | Moyen | Aucun test pour cette classe — régression Monolog 3.x non interceptée | À adresser : ajouter tests `AppLoggerTest.php` |
 | **Taux par défaut silencieux** | Moyen | Absent de `taux`, replie sur `TGC_STANDARD` (16 %) sans signal — risque facturation 16 % au lieu de 5 % | À documenter : ajouter exemple dans README.md |
 | **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `taux > 1.0` sans erreur | À clarifier : documenter le contrat ou ajouter validation |
 | **Pas de validation de facture vide** | Faible | `totalTtc([])` retourne `0 F CFP` sans signal d'erreur | À clarifier : est-ce volontaire ou erreur à rejeter ? |
 | **Absence d'interface sur `AppLogger`** | Faible | Logger instancié directement — impossible de substituer pour tests ou autre handler | Architecture : acceptable pour pilote, à refactorer pour production |
 
-Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences documentaires README.md (détectées) et le manque de tests `AppLogger` sont les plus impactantes pour la maintenabilité future.
+Aucune de ces fragilités ne rend le pilote inopérant. Le manque de tests `AppLogger` et l'absence d'interface de logger sont les plus impactantes pour la maintenabilité future.
 
 ## Charge de travail et ressources
 
@@ -134,7 +134,7 @@ Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences docume
 1. Ce projet est un **pilote volontairement minimal** — ne pas l'étendre avec du code de production absent
 2. Les **taux TGC** (16 %, 5 %) sont une décision métier à valider avec le board ; les constantes les rendent localisables mais non vérifiées au-delà du code
 3. La dépendance **Monolog 3.x** (migrée de 1.x en 2026-08-08) est verrouillée via `composer.lock` à `3.10.0` ; toute montée de version mineure/majeure requiert vérification de compatibilité de l'API (`info()` / `error()`) ; l'obsolescence d'une version majeure reste une hypothèse externe à valider avec la gestion de dépendances (Composer)
-4. **Incohérences documentaires détectées** : `README.md` annonce PHP 8.0 tandis que `composer.json` requiert 8.1 ; `README.md` prétend que `composer.lock` n'est pas versionné alors qu'il est présent. À corriger en priorité.
+4. **Documentation cohérente** : `README.md` et `composer.json` concordent sur PHP >=8.1 et `composer.lock` versionné. Cette cohérence a été rétablie en 2026-08-09.
 5. La **capacité taux mixte** (lignes à 16 % et 5 % sur la même facture) est désormais implémentée et testée — limitation d'origine levée
 6. Aucune **intégration interne** entre `InvoiceCalculator` et `AppLogger` ne doit être ajoutée dans ce dépôt : c'est l'affaire de l'application hôte
 7. Le **périmètre absent** (HTTP, ORM, documents) n'est pas une limitation, c'est une délimitation intentionnelle — aucune demande de l'étendre n'a été reçue du board

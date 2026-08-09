@@ -17,7 +17,7 @@ src/
 ├── composer.json          [19 lignes]   Déclaration des dépendances (Monolog 3.x, PHPUnit 10.5)
 ├── composer.lock          [568 lignes]  ✅ Présent et versionné depuis 2026-08-08 (Monolog 3.10.0, PHPUnit 10.5.64)
 ├── phpunit.xml            [13 lignes]   Configuration PHPUnit (pas de collecte de couverture)
-└── README.md              [13 lignes]   Présentation du pilote (incohérences détectées : PHP 8.0/8.1, composer.lock)
+└── README.md              [15 lignes]   Présentation du pilote
 ```
 
 ### Fichiers de test
@@ -94,23 +94,20 @@ Calcul du montant HT/TTC d'une facture selon les règles TGC, avec support des t
 
 **Retour** : somme des `quantite × prixUnitaire` pour chaque ligne, en francs CFP entiers
 
-**Implémentation** : lignes 16-33
+**Implémentation** : lignes 19-33
 ```php
 $total = 0;
 foreach ($lignes as $ligne) {
-    if (!isset($ligne['quantite'])) {
-        throw new \InvalidArgumentException('Clé quantite manquante');
-    }
-    if (!isset($ligne['prixUnitaire'])) {
-        throw new \InvalidArgumentException('Clé prixUnitaire manquante');
+    if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+        throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
     }
     $total += $ligne['quantite'] * $ligne['prixUnitaire'];
 }
-$total = (int) round($total);
-if ($total > PHP_INT_MAX) {
-    throw new \OverflowException('Dépassement PHP_INT_MAX');
+$rounded = round($total);
+if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) {
+    throw new \OverflowException('Le total hors taxe dépasse les bornes de PHP_INT_MAX.');
 }
-return $total;
+return (int) $rounded;
 ```
 
 **Points critiques** :
@@ -120,10 +117,10 @@ return $total;
 - Aucun rejet de valeurs négatives (comportement volontaire pour avoirs potentiels)
 
 **Tests couvrant** : 
-- `testTotalHorsTaxe` — 2 lignes, résultat 25000 ✓
-- `testTotalHorsTaxeClePrixUnitaireAbsente` — exception levée ✓
-- `testTotalHorsTaxeCleQuantiteAbsente` — exception levée ✓
-- `testTotalHorsTaxeOverflowException` — overflow détecté ✓
+- `testTotalHorsTaxe` — 2 lignes, assertion arithmétiquement correcte `25000` ; exécution runtime À OBSERVER
+- `testTotalHorsTaxeClePrixUnitaireAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalHorsTaxeCleQuantiteAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalHorsTaxeOverflowException` — exception `\OverflowException` attendue ; exécution runtime À OBSERVER
 
 #### `totalTtc(array $lignes): int`
 
@@ -133,24 +130,21 @@ return $total;
 
 **Retour** : `(int) round(Σ(quantite × prixUnitaire × (1 + taux)))` où taux par ligne, défaut `TGC_STANDARD`
 
-**Implémentation** : lignes 37-54
+**Implémentation** : lignes 41-56
 ```php
-$total = 0;
+$total = 0.0;
 foreach ($lignes as $ligne) {
-    if (!isset($ligne['quantite'])) {
-        throw new \InvalidArgumentException('Clé quantite manquante');
-    }
-    if (!isset($ligne['prixUnitaire'])) {
-        throw new \InvalidArgumentException('Clé prixUnitaire manquante');
+    if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+        throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
     }
     $taux = $ligne['taux'] ?? self::TGC_STANDARD;
     $total += $ligne['quantite'] * $ligne['prixUnitaire'] * (1 + $taux);
 }
-$total = (int) round($total);
-if ($total > PHP_INT_MAX) {
-    throw new \OverflowException('Dépassement PHP_INT_MAX');
+$rounded = round($total);
+if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) {
+    throw new \OverflowException('Le total TTC dépasse les bornes de PHP_INT_MAX.');
 }
-return $total;
+return (int) $rounded;
 ```
 
 **Points critiques** :
@@ -165,13 +159,13 @@ return $total;
 - **Après** : `totalTtc(array $lignes)` — taux spécifié par ligne
 
 **Tests couvrant** :
-- `testTotalTtcTauxStandard` — taux 0.16 explicite, résultat 11600 ✓
-- `testTotalTtcTauxReduit` — taux 0.05 explicite, résultat 10500 ✓
-- `testTotalTtcTauxMixte` — lignes à 16 % et 5 % mélangées, résultat 22100 ✓
-- `testTotalTtcSansTauxUtiliseTauxStandard` — absence de `taux`, repli 16 % ✓
-- `testTotalTtcClePrixUnitaireAbsente` — exception ✓
-- `testTotalTtcCleQuantiteAbsente` — exception ✓
-- `testTotalTtcOverflowException` — overflow ✓
+- `testTotalTtcTauxStandard` — taux 0.16 explicite, assertion arithmétiquement correcte `11600` ; exécution runtime À OBSERVER
+- `testTotalTtcTauxReduit` — taux 0.05 explicite, assertion arithmétiquement correcte `10500` ; exécution runtime À OBSERVER
+- `testTotalTtcTauxMixte` — lignes à 16 % et 5 % mélangées, assertion arithmétiquement correcte `22100` ; exécution runtime À OBSERVER
+- `testTotalTtcSansTauxUtiliseTauxStandard` — absence de `taux`, repli 16 % attendu ; exécution runtime À OBSERVER
+- `testTotalTtcClePrixUnitaireAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalTtcCleQuantiteAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalTtcOverflowException` — exception `\OverflowException` attendue ; exécution runtime À OBSERVER
 
 ### Dépendances
 Aucune — classe autonome, zéro dépendance Composer.
@@ -180,7 +174,7 @@ Aucune — classe autonome, zéro dépendance Composer.
 | Risque | Localisation | Sévérité | État |
 |---|---|---|---|
 | Taux non validé en plage | ligne 48 | Faible | Accepte `taux < 0` ou `> 1.0` ; à documenter ou valider |
-| Tableau vide retourne 0 | lignes 37-54 | Faible | Comportement non documenté comme erreur volontaire |
+| Tableau vide retourne 0 | lignes 41-56 | Faible | Comportement non documenté comme erreur volontaire |
 | Valeur négative non rejetée | ligne 49 | Faible | Volontaire pour avoirs ; à clarifier dans README |
 | Repli silencieux sur taux par défaut | ligne 48 | Moyen | Risque facturation 16 % au lieu de 5 % si `taux` omis ; à documenter |
 
@@ -305,7 +299,7 @@ Ligne 9 : docblock indiquant l'utilisation de Monolog 3.x (mise à jour 2026-08-
 
 Déclaré en `composer.json:7` : `"php": ">=8.1"`
 
-**⚠️ Incohérence détectée** : `README.md:7` annonce `PHP >= 8.0` mais `composer.json:7` requiert `>=8.1`. Correction nécessaire.
+**✅ Cohérent** : `README.md:7` et `composer.json:7` annoncent tous deux `PHP >= 8.1`.
 
 **Observation** : le code n'exploite aucune syntaxe PHP 8.1+ (pas de `match`, pas de constructor promotion, pas de `readonly`) — le minimum 8.1 est un héritage de la migration Monolog 3.x.
 
@@ -354,9 +348,9 @@ Déclaré en `composer.json:7` : `"php": ">=8.1"`
 
 | Chemin | Critique pour | Localisation | Points d'attention |
 |---|---|---|---|
-| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:16-33` | ✅ Gardes ajoutées, validation clés + overflow |
+| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:19-33` | ✅ Gardes combinées, validation clés + overflow |
 | Taux par ligne | Facturation mixte | `src/InvoiceCalculator.php:48` | ✅ Support des taux mixtes, repli 16 % par défaut |
-| Arrondi final | Exactitude TTC | `src/InvoiceCalculator.php:28,51` | ✅ VÉRIFIÉ_CODE: `(int) round()` sans argument de mode (lignes 28, 51) ; HYPOTHÈSE: applique `PHP_ROUND_HALF_UP` selon le comportement PHP 8.1+ — conformité TGC CFP à valider avec l'autorité fiscale |
+| Arrondi final | Exactitude TTC | `src/InvoiceCalculator.php:28,51` | ✅ VÉRIFIÉ_CODE: `(int) round()` sans argument de mode (lignes 28, 51) ; HYPOTHÈSE: applique `PHP_ROUND_HALF_UP` selon le comportement PHP 8.1+ — conformité TGC CFP à valider avec l'autorité fiscale ; accumulateur `totalTtc` utilise flottant `0.0` (ligne 43) |
 | Construction du logger | Journalisation | `src/AppLogger.php:17-18` | Instanciation directe Monolog, pas d'injection |
 | API `info()`/`error()` | Événements enregistrés | `src/AppLogger.php:23,28` | ✅ Monolog 3.x (migré depuis 1.x) |
 
