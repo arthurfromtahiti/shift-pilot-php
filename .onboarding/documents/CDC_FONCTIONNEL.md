@@ -13,13 +13,12 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 **Rôle** : instancie les deux classes publiques (`InvoiceCalculator`, `AppLogger`), construit les structures de facture, appelle le calcul et traite les résultats.
 
 **Capacités** :
-- Fournir une liste de lignes de facture (label, quantité, prix unitaire)
-- Appeler le calcul HT seul ou le calcul TTC avec sélection du taux
+- Fournir une liste de lignes de facture (quantité, prix unitaire obligatoires ; label optionnel et ignoré par le calcul)
+- Appeler le calcul HT seul ou le calcul TTC avec sélection du taux par ligne
 - Consulter les montants retournés (entiers en francs CFP)
 - Enregistrer les événements de facturation sur un logger configuré
 
 **Limitations** :
-- Ne peut pas calculer une facture mixte (lignes à 16 % et lignes à 5 % dans le même appel)
 - Ne peut pas remplacer le logger Monolog sans modifier la classe `AppLogger`
 - Ne peut pas accéder aux entités persistées (aucune persistance dans ce dépôt)
 
@@ -28,29 +27,36 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 **Rôle** : calcule les montants TTC selon les règles métier de la TGC.
 
 **Capacités** :
-- Accepte une liste de lignes au format `{label: string, quantite: int, prixUnitaire: int}`
+- Accepte une liste de lignes au format `{label?: string, quantite: int, prixUnitaire: int, taux?: float}`
 - Retourne le total HT (somme des `quantite × prixUnitaire`)
-- Retourne le total TTC en appliquant un taux TGC sélectionné (standard 16 % ou réduit 5 %)
+- Retourne le total TTC en appliquant le taux TGC spécifié par ligne (ou `TGC_STANDARD` 16 % en repli)
+- **Supporte les taux mixtes** : chaque ligne peut avoir un taux différent ; une facture peut mélanger lignes à 16 % et lignes à 5 %
+- Valide les entrées : lève `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent ; `\OverflowException` si le total dépasse `PHP_INT_MAX`
 - Arrondit le résultat final au franc CFP entier
 
 **Limitations** :
-- Applique un taux unique à toutes les lignes
-- Ne valide pas les entrées (pas de garde sur clés manquantes, pas de rejet de valeurs négatives)
+- Le taux par ligne, s'il est absent, replie silencieusement sur `TGC_STANDARD` (16 %) — aucun signal d'erreur ou avertissement
 - Retourne 0 F CFP si la liste de lignes est vide (comportement non documenté comme erreur)
+- Ne valide pas la plage du taux (accepte `taux < 0` ou `taux > 1.0` sans erreur)
+
+**Gardes d'entrée implémentées (2026-08-08)** :
+- `\InvalidArgumentException` si la clé `quantite` ou `prixUnitaire` est absente d'une ligne (code : `src/InvoiceCalculator.php:23-25`, `45-47` ; tests présents, exécution À OBSERVER)
+- `\OverflowException` si le total HT ou TTC dépasse `PHP_INT_MAX` (code : `src/InvoiceCalculator.php:29-31`, `52-54` ; tests présents, exécution À OBSERVER)
 
 ### Acteur système : `App\AppLogger`
 
-**Rôle** : enregistre les événements de facturation via Monolog 1.x.
+**Rôle** : enregistre les événements de facturation via Monolog 3.x.
 
 **Capacités** :
 - Reçoit la notification « facture émise » avec le montant TTC
 - Reçoit la notification « erreur de calcul » avec le message détaillé
 - Écrit les entrées sur un canal Monolog configurable (défaut : `facturation`)
 - Envoie vers un flux de sortie configurable (défaut : `php://stderr`)
+- **API Monolog 3.x** : utilise les méthodes modernes `info()` et `error()`
 
 **Limitations** :
-- Ne peut pas substituer de handler alternatif sans modification du source
-- API Monolog 1.x uniquement (méthodes `addInfo`/`addError`)
+- Ne peut pas substituer de handler alternatif sans modification du source (aucune injection de dépendance)
+- Aucun test n'existe pour cette classe — régression de dépendance Monolog non interceptée
 
 ## Parcours utilisateur et cas testés
 
@@ -66,46 +72,72 @@ $totalHT = $calc->totalHorsTaxe($lignes);  // → 25000 F CFP
 ```
 
 **Règle appliquée** : R2 — somme des produits `quantite × prixUnitaire`  
-**Preuve** : test `testTotalHorsTaxe` retourne `25000`
+**Preuve statique** : test `testTotalHorsTaxe` existe avec assertion arithmétiquement correcte `25000` ; exécution À OBSERVER
 
-### Cas 2 : Calcul du TTC au taux standard
-L'application hôte appelle `totalTtc()` avec le paramètre par défaut (`$tauxReduit = false`).
+### Cas 2 : Calcul du TTC au taux standard par ligne
+L'application hôte prépare une ligne avec un taux explicite et appelle `totalTtc()`.
 
 ```php
-$totalTTC = $calc->totalTtc($lignes, false);  // → 29000 F CFP
-// Calcul : 25000 × (1 + 0.16) = 29000
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16]  // 10000 × 1.16 = 11600
+]
+$totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 ```
 
 **Règles appliquées** : R3, R5  
-**Preuve** : test `testTotalTtcTauxStandard` retourne `11600` pour HT=10000
+**Preuve statique** : test `testTotalTtcTauxStandard` existe avec assertion arithmétiquement correcte `11600` pour HT=10000 avec taux explicite 0.16 ; exécution À OBSERVER
 
-### Cas 3 : Calcul du TTC au taux réduit
-L'application hôte appelle `totalTtc()` avec le paramètre `$tauxReduit = true`.
+### Cas 3 : Calcul du TTC au taux réduit par ligne
+L'application hôte spécifie un taux réduit dans la ligne.
 
 ```php
-$totalTTC = $calc->totalTtc($lignes, true);  // → 26250 F CFP
-// Calcul : 25000 × (1 + 0.05) = 26250
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05]  // 10000 × 1.05 = 10500
+]
+$totalTTC = $calc->totalTtc($lignes);  // → 10500 F CFP
 ```
 
 **Règles appliquées** : R4, R5  
-**Preuve** : test `testTotalTtcTauxReduit` retourne `10500` pour HT=10000
+**Preuve statique** : test `testTotalTtcTauxReduit` existe avec assertion arithmétiquement correcte `10500` pour HT=10000 avec taux explicite 0.05 ; exécution À OBSERVER
 
-### Limitation : Taux TGC unique
+### Cas 4 : Calcul du TTC à taux mixte (nouvelle capacité)
+L'application hôte calcule une facture avec des lignes à taux différents.
 
-La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seul taux à l'ensemble de la facture. Une facture comportant des lignes à taux standard (16 %) et d'autres à taux réduit (5 %) ne peut pas être calculée en un seul appel.
+```php
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.16],  // 11600
+    ['quantite' => 1, 'prixUnitaire' => 10000, 'taux' => 0.05]   // 10500
+]
+$totalTTC = $calc->totalTtc($lignes);  // → 22100 F CFP
+```
 
-**État** : c'est une **limitation d'API, pas un défaut** — elle était intentionnelle à la conception du pilote.
+**Règles appliquées** : R3, R4, R5  
+**Preuve statique** : test `testTotalTtcTauxMixte` existe avec assertion arithmétiquement correcte `22100` (somme `11600 + 10500`) ; exécution À OBSERVER
+
+### Cas 5 : Taux par défaut si absent
+Si une ligne n'inclut pas de clé `taux`, le taux standard 16 % est appliqué.
+
+```php
+$lignes = [
+    ['quantite' => 1, 'prixUnitaire' => 10000]  // sans 'taux' → repli sur TGC_STANDARD (0.16)
+]
+$totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
+```
+
+**Règles appliquées** : R3, R5  
+**Preuve statique** : test `testTotalTtcSansTauxUtiliseTauxStandard` existe avec assertion arithmétiquement correcte `11600` sans clé `taux` ; exécution À OBSERVER  
+**Attention** : ce repli silencieux (16 % par défaut) peut induire une facturation incorrecte si le consommateur omet volontairement le taux pour une ligne qui devrait être à 5 % — risque documenté mais non guaranti par l'API.
 
 ## Règles métier
 
 ### Domaine : Facturation TGC
 
 #### R1 — Ligne de facture
-- **Énoncé** : une ligne de facture contient au minimum une quantité et un prix unitaire
-- **Format** : tableau associatif PHP avec au minimum les clés `quantite: int, prixUnitaire: int` ; la clé `label` est optionnelle et ignorée
-- **Validation** : aucune — accès direct aux clés `quantite` et `prixUnitaire` sans garde
-- **Preuve** : `src/InvoiceCalculator.php:21-26` n'accède qu'à `quantite` et `prixUnitaire`
-- **Impact sur dev** : l'appelant doit garantir que chaque ligne a au minimum les clés `quantite` et `prixUnitaire`
+- **Énoncé** : une ligne de facture exige au minimum les clés `quantite` et `prixUnitaire` ; la clé `label` est optionnelle et ignorée par le calcul
+- **Format** : tableau associatif PHP avec les clés requises `quantite: int, prixUnitaire: int` ; les clés `label` et `taux` sont optionnelles (label ignorée dans le calcul, taux défaut `TGC_STANDARD` 0.16)
+- **Validation** : validation stricte — accès aux clés `quantite` et `prixUnitaire` avec garde `\InvalidArgumentException` si absentes. Clé `label` est lue à titre documentaire uniquement, ne provoque pas d'erreur si absente
+- **Preuve** : `src/InvoiceCalculator.php:23-25` valide `quantite` et `prixUnitaire`, lève `\InvalidArgumentException` si absentes ; docblock `src/InvoiceCalculator.php:15` liste `label` mais le code ne le consomme pas ligne 26 (seule accumulation `quantite × prixUnitaire`)
+- **Impact sur dev** : les deux clés obligatoires doivent être présentes ; une ligne mal formée lève une exception. `label` peut être omis sans conséquence
 
 #### R2 — Montant hors taxe (HT)
 - **Énoncé** : le montant HT d'une facture est la somme des produits quantité × prix unitaire pour chaque ligne
@@ -115,34 +147,36 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Impact sur dev** : aucune remise, aucune ristourne ne s'applique au niveau ligne — c'est une addition pure
 
 #### R3 — Taux TGC standard
-- **Énoncé** : la TGC standard s'applique au taux de 16 %
+- **Énoncé** : la TGC standard s'applique au taux de 16 % par défaut si la ligne ne spécifie pas de taux
 - **Constante** : `TGC_STANDARD = 0.16` (`src/InvoiceCalculator.php:11`)
-- **Condition d'application** : paramètre `$tauxReduit = false` (défaut)
-- **Preuve** : `src/InvoiceCalculator.php:11`, test `testTotalTtcTauxStandard`
+- **Condition d'application** : clé `taux` absente de la ligne — repli silencieux sur 16 %
+- **Preuve** : `src/InvoiceCalculator.php:11`, test `testTotalTtcTauxStandard` et `testTotalTtcSansTauxUtiliseTauxStandard`
 - **HYPOTHÈSE de conformité** : ce taux correspond aux normes TGC polynésiennes (non sourcé dans le dépôt)
 
-#### R4 — Taux TGC réduit
-- **Énoncé** : une TGC réduite au taux de 5 % peut être appliquée à une facture entière
+#### R4 — Taux TGC réduit (par ligne)
+- **Énoncé** : une TGC réduite au taux de 5 % peut être appliquée à une ou plusieurs lignes via la clé `taux`
 - **Constante** : `TGC_REDUIT = 0.05` (`src/InvoiceCalculator.php:12`)
-- **Condition d'application** : paramètre `$tauxReduit = true`
-- **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit`
-- **HYPOTHÈSE métier** : ce taux est destiné à certains produits (ex. première nécessité) selon la réglementation TGC polynésienne (non sourcé dans le dépôt)
+- **Condition d'application** : spécification explicite `taux: 0.05` dans la ligne
+- **Preuve** : `src/InvoiceCalculator.php:12`, test `testTotalTtcTauxReduit` et `testTotalTtcTauxMixte`
+- **HYPOTHÈSE métier** : ce taux est destiné à certains produits selon la réglementation TGC polynésienne ; l'association avec des catégories comme « première nécessité » relève de la politique fiscale externe, non sourcée dans le dépôt
 
 #### R5 — Montant TTC et arrondi
-- **Énoncé** : le montant TTC est calculé en appliquant le taux TGC au HT, puis en arrondissant au franc CFP entier
-- **Formule** : `TTC = (int) round(HT × (1 + taux_TGC))`
-- **Mode d'arrondi** : `PHP_ROUND_HALF_UP` (défaut PHP sans argument explicite)
-- **Preuve** : `src/InvoiceCalculator.php:27,45`
+- **Énoncé** : le montant TTC est calculé en appliquant le taux TGC à chaque ligne individuellement, puis en accumulant les résultats et en arrondissant une seule fois au franc CFP entier
+- **Formule** : `TTC = (int) round( Σ(quantite × prixUnitaire × (1 + taux_par_ligne)) )`
+- **Mode d'arrondi** : `round()` sans argument explicite — utilise `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
+- **Preuve** : `src/InvoiceCalculator.php:43-51` (accumulation sur variable `float` intermédiaire `$total` puis un appel unique à `round()`)
 - **Exemple** : HT=10000 F CFP, taux=16 % → `10000 × 1.16 = 11600 F CFP` exact (test `testTotalTtcTauxStandard`)
 - **Exemple** : HT=10000 F CFP, taux=5 % → `10000 × 1.05 = 10500 F CFP` exact (test `testTotalTtcTauxReduit`)
-- **HYPOTHÈSE de conformité** : le mode d'arrondi PHP par défaut est conforme à la réglementation TGC CFP (non sourcé dans le dépôt)
+- **Conséquence pour taux mixte** : une facture avec des lignes à 16 % et à 5 % accumule sans arrondir entre les lignes, puis arrondit une fois au final : `(11600.0 + 10500.0) = 22100.0 → round(22100.0) = 22100` (test `testTotalTtcTauxMixte`)
+- **HYPOTHÈSE** : le mode d'arrondi `PHP_ROUND_HALF_UP` et le pattern d'accumulation sans arrondi intermédiaire respectent la réglementation TGC CFP — à valider auprès de l'autorité fiscale polynésienne (non sourcé dans le dépôt)
 
-#### R6 — Taux unique par facture
-- **Énoncé** : une facture ne peut appliquer qu'un seul taux TGC (standard ou réduit) — impossible de panacher sur la même facture
-- **Implémentation** : paramètre booléen unique `bool $tauxReduit`, appliqué à tout le total HT
-- **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) doit être segmentée et calculée en deux appels
-- **Preuve** : `src/InvoiceCalculator.php:35` (signature `totalTtc`)
-- **État** : c'est une limitation d'API, appropriée au scope pilote ; à clarifier pour une évolution production
+#### R6 — Taux par ligne (depuis mise à jour 2026-08-08)
+- **Énoncé** : chaque ligne de facture peut spécifier son propre taux TGC via la clé optionnelle `taux?: float`
+- **Implémentation** : `src/InvoiceCalculator.php:48` — `$taux = $ligne['taux'] ?? self::TGC_STANDARD`
+- **Repli par défaut** : si la clé `taux` est absente, le taux standard `TGC_STANDARD` (0.16 / 16 %) s'applique
+- **Conséquence** : une facture mixte (lignes à 16 % et à 5 %) peut désormais être calculée en un seul appel en spécifiant `taux` par ligne
+- **Preuve statique** : `src/InvoiceCalculator.php:41` (signature `totalTtc(array $lignes): int`), test `testTotalTtcTauxMixte` existe avec assertion arithmétiquement correcte `22100` (11600 + 10500) ; exécution À OBSERVER
+- **État** : limitation d'origine **levée** — la capacité taux mixte est présente dans le code et couverte par un test ; exécution runtime À OBSERVER
 
 #### R7 — Pas de remise, pas d'avoir
 - **Énoncé** : la bibliothèque calcule un montant brut sans possibilité de remise ou d'avoir
@@ -159,15 +193,15 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 #### R9 — Méthode « facture émise »
 - **Énoncé** : une méthode `factureEmise()` reçoit le montant TTC et l'enregistre via le logger Monolog
 - **Signature** : `factureEmise(int $totalTTC): void`
-- **Implémentation** : appelle `$this->logger->addInfo()` avec le contexte `total_ttc`
-- **Preuve** : `src/AppLogger.php:21-24`
+- **Implémentation** : appelle `$this->logger->info()` (API Monolog 3.x, mise à jour 2026-08-08) avec le contexte `total_ttc`
+- **Preuve** : `src/AppLogger.php:23`
 - **Note** : l'écriture effective des logs dépend de la configuration du handler Monolog côté application hôte
 
 #### R10 — Méthode « erreur de calcul »
 - **Énoncé** : une méthode `erreurCalcul()` reçoit un message et l'enregistre en tant que message d'erreur via le logger Monolog
 - **Signature** : `erreurCalcul(string $message): void`
-- **Implémentation** : appelle `$this->logger->addError()` avec le contexte `detail`
-- **Preuve** : `src/AppLogger.php:26-29`
+- **Implémentation** : appelle `$this->logger->error()` (API Monolog 3.x, mise à jour 2026-08-08) avec le contexte `detail`
+- **Preuve** : `src/AppLogger.php:28`
 - **Note** : l'écriture effective des logs dépend de la configuration du handler Monolog côté application hôte
 
 #### R11 — Canal de sortie configurable
@@ -177,10 +211,20 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 - **Preuve** : `src/AppLogger.php:15-18`
 - **Impact opérationnel** : permettre à l'application hôte de rediriger les logs selon son infrastructure (fichier, syslog, API, etc.)
 
-#### R12 — Aucun traitement du message en sortie
-- **Énoncé** : la bibliothèque ne filtre, n'enrichit ni ne formate les messages — elle les transmet tels quels à Monolog
-- **Preuve** : `src/AppLogger.php:23,28` (appels directs à `$this->logger->addInfo()` / `addError()`)
-- **Impact dev** : le formatage des logs relève de la configuration Monolog côté application hôte
+#### R12 — Transmission sans traitement supplémentaire
+- **Énoncé** : `AppLogger` transmet les messages directement à Monolog via les méthodes `info()` et `error()`, sans filtrage ni enrichissement
+- **Implémentation** : `src/AppLogger.php:23,28` effectue des appels directs à `$this->logger->info()` / `error()` avec le contexte fourni (clé `total_ttc` pour émission, clé `detail` pour erreur)
+- **API** : utilise Monolog 3.x (méthodes `info()` et `error()` modernes)
+- **Portée observée au niveau du code** : 
+  - ✅ `AppLogger` appelle `$this->logger->info()` / `error()` aux lignes `src/AppLogger.php:23,28` — présence confirmée en lecture statique
+- **Portée non garantie — dépend de la configuration Monolog externe** : 
+  - L'écriture effective des logs vers une destination (fichier, syslog, API) dépend de la configuration des handlers Monolog côté application hôte
+  - Le formatage et la sérialisation des messages relèvent de la configuration Monolog, non observés dans ce dépôt
+  - L'absence d'erreur lors de l'appel à `info()` / `error()` ne garantit pas que le message sera effectivement écrit ou persisté
+  - Le comportement du handler (errors lors de l'écriture, gestion des permissions, formatage) relève entièrement de Monolog et de sa configuration externe
+- **Preuve statique** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`) ; `src/AppLogger.php:23,28` (appels aux méthodes Monolog)
+- **Limitation observation** : aucun test pour `AppLogger` dans ce dépôt ; pas d'exécution runtime observée
+- **Impact dev** : le résultat final (présence du log en sortie, son format, sa destination) relève de la configuration Monolog côté application hôte ; `AppLogger` n'en contrôle que la transmission jusqu'à Monolog
 
 ## Données
 
@@ -191,13 +235,16 @@ La signature `totalTtc(array $lignes, bool $tauxReduit = false)` applique un seu
 **Format de ligne de facture** :
 ```php
 [
-    'label'        => string,    // Libellé du produit/service
-    'quantite'     => int,        // Nombre d'unités
-    'prixUnitaire' => int         // Prix en francs CFP par unité
+    'quantite'     => int,        // Nombre d'unités (REQUIS)
+    'prixUnitaire' => int,        // Prix en francs CFP par unité (REQUIS)
+    'label'        => string,     // Libellé du produit/service (optionnel, ignoré par le calcul)
+    'taux'         => float       // Taux TGC appliqué (0.16, 0.05, ou autre ; optionnel, défaut TGC_STANDARD 0.16)
 ]
 ```
 
-**Aucune autre clé n'est reconnue** — toute clé supplémentaire sera ignorée ; l'absence d'une clé causera une erreur à l'exécution.
+**Clés obligatoires** : `quantite`, `prixUnitaire`  
+**Clés optionnelles** : `label` (ignorée par le calcul), `taux` (défaut 0.16 si absente)  
+**Clés supplémentaires** : toute autre clé sera ignorée ; l'absence de clé obligatoire causera une `\InvalidArgumentException` à l'exécution.
 
 ### Constantes de domaine
 
@@ -224,15 +271,15 @@ Ces constantes sont l'**unique point source de vérité** pour les deux taux uti
 
 ### Clé manquante dans une ligne
 
-**Observation** : si une ligne n'a pas la clé `quantite` ou `prixUnitaire`, l'accès direct causera une erreur.
+**Observation** : si une ligne n'a pas la clé `quantite` ou `prixUnitaire`, une `\InvalidArgumentException` est levée.
 
-**Comportement** : PHP génère un avertissement (`Warning: Undefined array key "quantite"`) et retourne `null`, qui se coerce en 0 dans le calcul.
+**Comportement** : `src/InvoiceCalculator.php:23-25` (dans `totalHorsTaxe`) et `src/InvoiceCalculator.php:45-47` (dans `totalTtc`) vérifient l'existence de ces deux clés via `isset()` et lèvent explicitement l'exception avec le message « Chaque ligne doit contenir "quantite" et "prixUnitaire" ».
 
-**Conséquence** : le calcul produit un résultat incorrect (HT inférieur au réel) sans signal d'erreur explicite.
+**Conséquence** : une ligne mal formée provoque un arrêt explicite avec un message d'erreur clair.
 
-**Preuve** : aucun test ne couvre ce cas ; `src/InvoiceCalculator.php:22` accède directement sans validation
+**Preuve statique** : `src/InvoiceCalculator.php:23-25,45-47` ; tests `tests/InvoiceCalculatorTest.php:54-87` existent et contiennent les assertions
 
-**État** : `HYPOTHÈSE` — ce comportement runtime n'a pas été observé à l'exécution dans ce run.
+**État** : `VÉRIFIÉ_CODE` — ce comportement est implémenté dans le code et couvert par des tests présents ; exécution runtime À OBSERVER via `composer test`.
 
 ### Valeur négative (quantité ou prix)
 
@@ -255,21 +302,31 @@ Voir **R6** ci-dessus — limitation d'API, pas un cas à couvrir.
 Un appel à une fonction de la bibliothèque est **fonctionnellement correct** si et seulement si :
 
 1. **Calcul HT** : `totalHorsTaxe(...)` retourne la somme exacte de tous les produits `quantite × prixUnitaire`
-2. **Calcul TTC** : `totalTtc(...)` retourne `(int) round(HT × (1 + taux))` où le taux est celui sélectionné
-3. **Journalisation** : `factureEmise(...)` et `erreurCalcul(...)` ne lèvent pas d'exception et enregistrent sur le logger Monolog
-4. **Arrondi** : l'arrondi final suit la règle PHP native `round()` sans argument de mode
+2. **Calcul TTC** : `totalTtc(...)` retourne `(int) round( Σ(quantite × prixUnitaire × (1 + taux_par_ligne)) )` où chaque ligne peut spécifier son propre taux ou replie sur `TGC_STANDARD`
+3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` contiennent le code pour lever `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent (preuve statique : `src/InvoiceCalculator.php:23-25,45-47` ; test présent ; exécution À OBSERVER), `\OverflowException` si le résultat dépasse `PHP_INT_MAX` (preuve statique : `src/InvoiceCalculator.php:29-31,52-54` ; test présent ; exécution À OBSERVER)
+4. **Structure de ligne** : clé `label` optionnelle et ignorée par le calcul ; clé `taux` optionnelle pour chaque ligne, repli sur `TGC_STANDARD` si absente
+5. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel avec accumulation sans arrondi intermédiaire ; preuve statique présente (test `testTotalTtcTauxMixte` avec assertion arithmétiquement correcte `22100`) ; exécution À OBSERVER
+6. **Journalisation — portée du code** : `factureEmise(int $totalTTC): void` et `erreurCalcul(string $message): void` existent et contiennent l'appel à `$this->logger->info()` / `error()` (preuve statique : `src/AppLogger.php:23,28` ; observation confirmée statiquement) ; exécution runtime À OBSERVER
+7. **Journalisation — résultat final dépend de Monolog externe** : l'écriture effective des logs (destination fichier, syslog, formatage, sérialisation, persistance, gestion d'erreurs du handler) dépend entièrement de la configuration des handlers Monolog côté application hôte ; ce dépôt ne contrôle que la transmission du message jusqu'à Monolog ; garantie de fonctionnement final soumise à exécution runtime observée
+8. **Arrondi** : l'arrondi final utilise `round()` sans argument explicite de mode — applique `PHP_ROUND_HALF_UP` selon le comportement standard PHP 8.1+
 
 ## Limites de garantie
 
 La bibliothèque **ne garantit pas** :
 - Que les taux TGC (16 %, 5 %) sont conformes à la réglementation polynésienne actuelle (à valider avec le board)
-- Que le mode d'arrondi PHP par défaut est conforme à la réglementation (à valider avec le board)
-- Que le logger Monolog reste accessible ou que sa version ne cassera pas lors de montées de version
+- Que le mode d'arrondi `PHP_ROUND_HALF_UP` (appliqué par `round()` sans argument) est conforme à la réglementation TGC CFP (à valider avec le board/autorité fiscale)
 - Que la facture vide retourne 0 F CFP par design plutôt que par défaut du langage (à clarifier si besoin)
-- Que les factures mixtes (taux multiples) soient supportées — elles ne le sont pas par l'API
+- Que la plage du taux fourni par ligne (par ex. `taux: -0.5` ou `taux: 2.0`) produise un résultat valide — toute valeur est acceptée sans validation
+- Que le comportement du taux par défaut silencieux (16 % si absent) ne causera pas d'erreur de facturation chez le consommateur — c'est un risque documenté
+
+**Concernant Monolog** :
+- L'écriture effective des logs sur stderr, fichier, ou autre destination dépend entièrement de la configuration des handlers Monolog côté application hôte (formatage, sérialisation, persistance, destination, gestion d'erreurs)
+- `AppLogger` : le code source appelle `$this->logger->info()` / `error()` aux lignes `src/AppLogger.php:23,28` (observation statique) ; l'exécution réelle et la gestion d'erreurs du handler Monolog relèvent de la configuration externe et ne sont pas observées dans ce dépôt
+- Les évolutions futures de Monolog (changements d'API, retrait de méthodes) relèvent de la gestion de dépendances Composer et ne sont pas garanties par cette bibliothèque
 
 ---
 
 **Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30`  
-**Date de dernière vérification** : 2026-08-04
+**SHA référence** : `7470fd9` (corrections documentaires critiques)  
+**Date de dernière mise à jour** : 2026-08-09  
+**Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

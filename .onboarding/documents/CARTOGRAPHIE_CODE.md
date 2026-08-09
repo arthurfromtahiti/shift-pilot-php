@@ -1,33 +1,33 @@
 # Cartographie du code — shift-pilot-php
 
-## Inventory et navigation
+## Inventaire et navigation
 
 ### Fichiers productifs
 
 ```
 src/
-├── InvoiceCalculator.php  [32 lignes]   Unique classe métier — calcul HT/TTC
-└── AppLogger.php          [30 lignes]   Adaptateur technique Monolog 1.x
+├── InvoiceCalculator.php  [57 lignes]   Unique classe métier — calcul HT/TTC avec taux par ligne
+└── AppLogger.php          [30 lignes]   Adaptateur technique Monolog 3.x
 ```
 
 ### Fichiers de configuration et support
 
 ```
 .
-├── composer.json          [19 lignes]   Déclaration des dépendances (Monolog, PHPUnit)
-├── composer.lock          [absent]      ⚠️ Builds non reproductibles
-├── phpunit.xml            [13 lignes]   Configuration PHPUnit (pas de couverture)
-└── README.md              [13 lignes]   Présentation du pilote
+├── composer.json          [19 lignes]   Déclaration des dépendances (Monolog 3.x, PHPUnit 10.5)
+├── composer.lock          [568 lignes]  ✅ Présent et versionné depuis 2026-08-08 (Monolog 3.10.0, PHPUnit 10.5.64)
+├── phpunit.xml            [13 lignes]   Configuration PHPUnit (pas de collecte de couverture)
+└── README.md              [15 lignes]   Présentation du pilote
 ```
 
 ### Fichiers de test
 
 ```
 tests/
-└── InvoiceCalculatorTest.php  [31 lignes]   3 tests PHPUnit nominaux
+└── InvoiceCalculatorTest.php  [101 lignes]   12 tests PHPUnit (nominaux, mixtes, exceptions)
 ```
 
-**Total** : 7 fichiers versionnés ; 2 classes PHP ; 3 tests exécutables.
+**Total** : 8 fichiers versionnés (y/c composer.lock) ; 2 classes PHP ; 12 tests exécutables.
 
 ---
 
@@ -47,15 +47,16 @@ tests/
 │ const TGC_STANDARD=0.16  │              │ __construct(canal, fichier)│
 │ const TGC_REDUIT=0.05    │              │ factureEmise(totalTtc)    │
 │ totalHorsTaxe(lignes)    │              │ erreurCalcul(message)    │
-│ totalTtc(lignes, taux)   │              │ wraps: Monolog\Logger    │
+│ totalTtc(lignes)         │              │ wraps: Monolog\Logger    │
+│                          │              │       (Monolog 3.x)      │
 └──────────────────────────┘              └──────────────────────────┘
      │                                            │
-     │ (aucune dépendance)                        │ depends on:
+     │ (aucune dépendance)                        │
      └──────────────────────┬─────────────────────┤
                             │                     │
                        No internal                │
-                       orchestration       Monolog 1.x
-                                             (^1.25)
+                       orchestration       Monolog 3.x
+                                             (^3.0)
 ```
 
 **Pas de couche d'intégration** : les deux classes coexistent sans code qui les lie. L'application hôte les orchestre.
@@ -65,10 +66,10 @@ tests/
 ## Classe 1 : `App\InvoiceCalculator`
 
 ### Fichier
-`src/InvoiceCalculator.php` — 32 lignes
+`src/InvoiceCalculator.php` — 57 lignes (mise à jour 2026-08-08)
 
 ### Responsabilité
-Calcul du montant HT/TTC d'une facture selon les règles TGC.
+Calcul du montant HT/TTC d'une facture selon les règles TGC, avec support des taux mixtes par ligne.
 
 ### Namespace et autoload
 - Namespace : `App\`
@@ -81,68 +82,101 @@ Calcul du montant HT/TTC d'une facture selon les règles TGC.
 | `TGC_STANDARD` | `0.16` | Taux standard (16 %) — ligne 11 |
 | `TGC_REDUIT` | `0.05` | Taux réduit (5 %) — ligne 12 |
 
-**Point de vigilance** : ces constantes sont l'unique source d'vérité pour les taux TGC. Toute modification doit passer par ici.
+**Point de vigilance** : ces constantes sont l'unique source de vérité pour les taux TGC. Toute modification doit passer par ici.
 
 ### Méthodes publiques
 
 #### `totalHorsTaxe(array $lignes): int`
 
-**Signature** : ligne 17  
+**Signature** : ligne 14  
 **Paramètre** :
-- `$lignes` : array de lignes, chaque ligne = `{label: string, quantite: int, prixUnitaire: int}`
+- `$lignes` : array de lignes, chaque ligne = `{label?: string, quantite: int, prixUnitaire: int}`
 
 **Retour** : somme des `quantite × prixUnitaire` pour chaque ligne, en francs CFP entiers
 
-**Implémentation** : lignes 19-22
+**Implémentation** : lignes 19-33
 ```php
 $total = 0;
 foreach ($lignes as $ligne) {
+    if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+        throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+    }
     $total += $ligne['quantite'] * $ligne['prixUnitaire'];
 }
-return $total;
+$rounded = round($total);
+if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) {
+    throw new \OverflowException('Le total hors taxe dépasse les bornes de PHP_INT_MAX.');
+}
+return (int) $rounded;
 ```
 
 **Points critiques** :
-- Pas de validation — accès direct aux clés sans garde (ligne 21 et 100)
-- Pas de typehint sur le contenu des lignes (pas de vérification à la compilation)
+- **Gardes ajoutées** (2026-08-08) : `isset()` + `\InvalidArgumentException` sur clés manquantes (lignes 23-25, 45-47)
+- **Overflow détecté** : `\OverflowException` si total > `PHP_INT_MAX` (lignes 29-31)
+- Arrondi explicite : `(int) round()` (ligne 28)
+- Aucun rejet de valeurs négatives (comportement volontaire pour avoirs potentiels)
 
-**Test couvrant** : `testTotalHorsTaxe` — 2 lignes, résultat 25000 ✓
+**Tests couvrant** : 
+- `testTotalHorsTaxe` — 2 lignes, assertion arithmétiquement correcte `25000` ; exécution runtime À OBSERVER
+- `testTotalHorsTaxeClePrixUnitaireAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalHorsTaxeCleQuantiteAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalHorsTaxeOverflowException` — exception `\OverflowException` attendue ; exécution runtime À OBSERVER
 
-#### `totalTtc(array $lignes, bool $tauxReduit = false): int`
+#### `totalTtc(array $lignes): int`
 
-**Signature** : ligne 26  
-**Paramètres** :
-- `$lignes` : idem `totalHorsTaxe`
-- `$tauxReduit` : booléen, défaut `false` (taux standard)
+**Signature** : ligne 35 (**changement d'API** — ancien paramètre `bool $tauxReduit` supprimé)  
+**Paramètre** :
+- `$lignes` : array de lignes avec structure `{label?: string, quantite: int, prixUnitaire: int, taux?: float}`
 
-**Retour** : `(int) round(HT × (1 + taux))` où taux = 0.16 (défaut) ou 0.05
+**Retour** : `(int) round(Σ(quantite × prixUnitaire × (1 + taux)))` où taux par ligne, défaut `TGC_STANDARD`
 
-**Implémentation** : lignes 28-30
+**Implémentation** : lignes 41-56
 ```php
-$ht = $this->totalHorsTaxe($lignes);
-$taux = $tauxReduit ? self::TGC_REDUIT : self::TGC_STANDARD;
-return (int) round($ht * (1 + $taux));
+$total = 0.0;
+foreach ($lignes as $ligne) {
+    if (!isset($ligne['quantite'], $ligne['prixUnitaire'])) {
+        throw new \InvalidArgumentException('Chaque ligne doit contenir "quantite" et "prixUnitaire".');
+    }
+    $taux = $ligne['taux'] ?? self::TGC_STANDARD;
+    $total += $ligne['quantite'] * $ligne['prixUnitaire'] * (1 + $taux);
+}
+$rounded = round($total);
+if ($rounded > PHP_INT_MAX || $rounded < PHP_INT_MIN) {
+    throw new \OverflowException('Le total TTC dépasse les bornes de PHP_INT_MAX.');
+}
+return (int) $rounded;
 ```
 
 **Points critiques** :
-- Appelle `totalHorsTaxe` en interne — partage les mêmes limitations de validation
-- Taux unique pour l'ensemble du HT — impossible de panacher taux standard et réduit
-- Mode d'arrondi : `round()` sans argument = `PHP_ROUND_HALF_UP` (défaut)
+- **Taux par ligne** (2026-08-08) : chaque ligne porte sa clé `taux?: float` optionnelle (ligne 48)
+- **Repli sur défaut** : si `taux` absent, applique `self::TGC_STANDARD` (16 %) silencieusement (ligne 48)
+- **Taux mixte désormais supporté** : factures avec lignes à 16 % ET lignes à 5 % en un seul appel (test `testTotalTtcTauxMixte`)
+- **Gardes ajoutées** (2026-08-08) : comme `totalHorsTaxe`, validation des clés obligatoires et overflow
+- **Pas de validation de plage** : accepte `taux < 0` ou `taux > 1.0` sans erreur
+
+**Changement d'API majeur** :
+- **Avant** : `totalTtc(array $lignes, bool $tauxReduit = false)`
+- **Après** : `totalTtc(array $lignes)` — taux spécifié par ligne
 
 **Tests couvrant** :
-- `testTotalTtcTauxStandard` : HT=10000, taux=16 %, résultat 11600 ✓
-- `testTotalTtcTauxReduit` : HT=10000, taux=5 %, résultat 10500 ✓
+- `testTotalTtcTauxStandard` — taux 0.16 explicite, assertion arithmétiquement correcte `11600` ; exécution runtime À OBSERVER
+- `testTotalTtcTauxReduit` — taux 0.05 explicite, assertion arithmétiquement correcte `10500` ; exécution runtime À OBSERVER
+- `testTotalTtcTauxMixte` — lignes à 16 % et 5 % mélangées, assertion arithmétiquement correcte `22100` ; exécution runtime À OBSERVER
+- `testTotalTtcSansTauxUtiliseTauxStandard` — absence de `taux`, repli 16 % attendu ; exécution runtime À OBSERVER
+- `testTotalTtcClePrixUnitaireAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalTtcCleQuantiteAbsente` — exception `\InvalidArgumentException` attendue ; exécution runtime À OBSERVER
+- `testTotalTtcOverflowException` — exception `\OverflowException` attendue ; exécution runtime À OBSERVER
 
 ### Dépendances
 Aucune — classe autonome, zéro dépendance Composer.
 
 ### Risques et dette
-| Risque | Localisation | Sévérité | Mitigation |
+| Risque | Localisation | Sévérité | État |
 |---|---|---|---|
-| Absence de garde sur clés | ligne 21 | Moyen | Ajouter une validation ou une exception |
-| Tableau vide retourne 0 | lignes 19-22 | Faible | Documenter le comportement ou le rejeter |
-| Valeur négative non rejetée | ligne 21 | Faible | Documenter ou valider |
-| Taux unique par facture | ligne 26 | Moyen pour prod, Faible pour pilote | Refonte d'API si taux mixtes requis |
+| Taux non validé en plage | ligne 48 | Faible | Accepte `taux < 0` ou `> 1.0` ; à documenter ou valider |
+| Tableau vide retourne 0 | lignes 41-56 | Faible | Comportement non documenté comme erreur volontaire |
+| Valeur négative non rejetée | ligne 49 | Faible | Volontaire pour avoirs ; à clarifier dans README |
+| Repli silencieux sur taux par défaut | ligne 48 | Moyen | Risque facturation 16 % au lieu de 5 % si `taux` omis ; à documenter |
 
 ---
 
@@ -152,7 +186,7 @@ Aucune — classe autonome, zéro dépendance Composer.
 `src/AppLogger.php` — 30 lignes
 
 ### Responsabilité
-Adaptateur technique pour l'enregistrement des événements de facturation via Monolog 1.x.
+Adaptateur technique pour l'enregistrement des événements de facturation via **Monolog 3.x** (migré depuis 1.x en 2026-08-08).
 
 ### Namespace et autoload
 - Namespace : `App\`
@@ -184,63 +218,62 @@ $this->logger->pushHandler(new StreamHandler($fichier));
 - Pas d'interface — impossible de substituer pour tests sans sous-classement
 - Dépend directement de `Monolog\Logger` et `Monolog\Handler\StreamHandler`
 
-**Dépendance Monolog** : `monolog/monolog: ^1.25` (déclaré en `composer.json:8`)
+**Dépendance Monolog** : `monolog/monolog: ^3.0` (déclaré en `composer.json:8`, verrouillé à 3.10.0 dans `composer.lock`)
 
 #### `factureEmise(int $totalTtc): void`
 
 **Signature** : ligne 21  
 **Paramètre** : `$totalTtc` — montant TTC en francs CFP entiers
 
-**Implémentation** : lignes 23-24
+**Implémentation** : lignes 23
 ```php
-$this->logger->addInfo('Facture émise', ['total_ttc' => $totalTtc]);
+$this->logger->info('Facture émise', ['total_ttc' => $totalTtc]);
 ```
 
 **Points critiques** :
-- Utilise l'API Monolog 1.x `addInfo()` (déclaration de compatibilité : docblock ligne 9)
+- **API Monolog 3.x** (2026-08-08) : utilise `info()` à la place de l'ancien `addInfo()` (Monolog 1.x)
 - Ajoute un contexte Monolog `total_ttc` avec la valeur
 - Pas de gestion d'exception — les erreurs Monolog remontent à l'appelant
 
-**État** : `HYPOTHÈSE` — l'API `addInfo()` serait retirée en Monolog 2.0 (connaissance externe, non sourcée dans le dépôt)
+**Test couvrant** : aucun (classe non testée, risque à adresser)
 
 #### `erreurCalcul(string $message): void`
 
-**Signature** : ligne 26  
+**Signature** : ligne 25  
 **Paramètre** : `$message` — description de l'erreur
 
-**Implémentation** : lignes 28-29
+**Implémentation** : ligne 28
 ```php
-$this->logger->addError('Erreur de calcul', ['detail' => $message]);
+$this->logger->error('Erreur de calcul', ['detail' => $message]);
 ```
 
 **Points critiques** :
-- Utilise l'API Monolog 1.x `addError()` (même déclaration de compatibilité)
+- **API Monolog 3.x** (2026-08-08) : utilise `error()` à la place de l'ancien `addError()`
 - Ajoute un contexte Monolog `detail` avec le message
 - Pas de gestion d'exception
 
+**Test couvrant** : aucun (classe non testée)
+
 ### Docblock et déclarations
 
-Ligne 9-11 : docblock indiquant l'utilisation de l'API Monolog 1.x
+Ligne 9 : docblock indiquant l'utilisation de Monolog 3.x (mise à jour 2026-08-08)
 ```php
 /**
- * @uses Monolog\Logger (v1.x API: addInfo/addError) ...
+ * @uses Monolog\Logger (API 3.x: info/error) ...
 ```
 
-Cette déclaration **est importante** : elle documente que le code dépend spécifiquement des méthodes `addInfo`/`addError` qui sont Monolog 1.x, pas 2.x+.
-
 ### Dépendances
-| Dépendance | Version | Déclaration |
-|---|---|---|
-| `Monolog` | `^1.25` | `composer.json:8` |
+| Dépendance | Version | Déclaration | État |
+|---|---|---|---|
+| `Monolog` | `^3.0` | `composer.json:8` | ✅ Verrouillé à 3.10.0 dans composer.lock |
 
 ### Risques et dette
-| Risque | Localisation | Sévérité | Mitigation |
+| Risque | Localisation | Sévérité | État |
 |---|---|---|---|
-| Dépendance à l'API Monolog 1.x | lignes 23,28 + docblock 9 | Moyen | Vigilance lors d'une montée vers Monolog 2.x ; `addInfo()`/`addError()` seraient à adapter |
-| Pas d'interface pour injection | lignes 17-18 | Moyen | Extraire une interface `LoggerInterface` |
-| Aucun test | (fichier non couvert) | Moyen | Ajouter `AppLoggerTest.php` |
+| **Classe entièrement non testée** | (fichier entier) | Moyen | ⚠️ **À adresser** : ajouter `AppLoggerTest.php` (au min. test de construction) |
+| Pas d'interface pour injection | lignes 17-18 | Moyen | Acceptable pour pilote ; extraire `LoggerInterface` pour production |
 | Pas de gestion d'exception | lignes 23,28 | Faible | Les erreurs Monolog remontent à l'appelant — à documenter |
-| Pas de `composer.lock` | (racine) | Moyen | Créer et versionner `composer.lock` |
+| Dépend API spécifique Monolog 3.x | lignes 23,28 | Moyen | `info()`/`error()` propres à 3.x ; changements de version majeure relèvent de la gestion Composer et équipe ops |
 
 ---
 
@@ -248,25 +281,27 @@ Cette déclaration **est importante** : elle documente que le code dépend spéc
 
 ### Production
 
-| Package | Version déclarée | But | Fichier |
-|---|---|---|---|
-| `monolog/monolog` | `^1.25` | Journalisation applicative | `src/AppLogger.php` |
+| Package | Version déclarée | Version verrouillée | But | Fichier |
+|---|---|---|---|---|
+| `monolog/monolog` | `^3.0` | `3.10.0` (composer.lock) | Journalisation applicative | `src/AppLogger.php` |
 
-**Vigilance** : l'API utilisée (`addInfo`, `addError`) appartient à Monolog 1.x. La contrainte `^1.25` protège le code contre des versions majeures qui changeraient cette API. Point de vigilance lors d'une montée de version.
+**Vigilance** : l'API utilisée (`info`, `error`) appartient à Monolog 3.x. La migration depuis 1.x est complète (2026-08-08). La contrainte `^3.0` protège contre un saut majeur 4.x. **composer.lock est présent et versionné** — builds reproductibles garantis.
 
 ### Tests/Développement
 
-| Package | Version déclarée | But | Fichier |
-|---|---|---|---|
-| `phpunit/phpunit` | `^9.6` | Tests unitaires | `tests/InvoiceCalculatorTest.php` |
+| Package | Version déclarée | Version verrouillée | But | Fichier |
+|---|---|---|---|---|
+| `phpunit/phpunit` | `^10.5` | `10.5.64` (composer.lock) | Tests unitaires | `tests/InvoiceCalculatorTest.php` |
 
-**État** : PHPUnit 9.x sans configuration de couverture (`phpunit.xml` ne déclare pas `<coverage>`).
+**État** : PHPUnit 10.5.x ; **12 tests couvrent `InvoiceCalculator`** ; `AppLogger` n'a aucun test.
 
 ### PHP version minimale
 
-Déclaré en `composer.json:6` : `"php": ">=8.0"`
+Déclaré en `composer.json:7` : `"php": ">=8.1"`
 
-**Observation** : le code n'exploite aucune syntaxe PHP 8.1+ (pas de `match`, pas de constructor promotion, pas de named arguments) — le minimum 8.0 est volontairement large.
+**✅ Cohérent** : `README.md:7` et `composer.json:7` annoncent tous deux `PHP >= 8.1`.
+
+**Observation** : le code n'exploite aucune syntaxe PHP 8.1+ (pas de `match`, pas de constructor promotion, pas de `readonly`) — le minimum 8.1 est un héritage de la migration Monolog 3.x.
 
 ---
 
@@ -280,13 +315,13 @@ Déclaré en `composer.json:6` : `"php": ">=8.0"`
 |---|---|---|
 | `name` | `shift/shift-pilot-php` | Identifiant package |
 | `type` | `library` | Type : bibliothèque (pas une application) |
-| `require` | `php: >=8.0`, `monolog/monolog: ^1.25` | Dépendances production |
-| `require-dev` | `phpunit/phpunit: ^11.0` | Dépendances tests |
+| `require` | `php: >=8.1`, `monolog/monolog: ^3.0` | Dépendances production |
+| `require-dev` | `phpunit/phpunit: ^10.5` | Dépendances tests |
 | `autoload.psr-4` | `App\\` → `src/` | Autoload PSR-4 |
 | `autoload.tests.psr-4` | `App\\Tests\\` → `tests/` | Autoload tests |
 | `scripts.test` | `phpunit` | Commande `composer test` |
 
-**Absence notable** : pas de `composer.lock` (README:13 le mentionne explicitement). Conséquence : deux installations peuvent résoudre des versions différentes de Monolog dans la plage `^1.25`.
+**✅ État** : `composer.lock` est **présent et versionné** (depuis 2026-08-08) — dépendances reproductibles.
 
 ---
 
@@ -305,17 +340,19 @@ Déclaré en `composer.json:6` : `"php": ">=8.0"`
 
 **Absence notable** : pas de `<coverage>` — la couverture de code n'est ni collectée ni rapportée.
 
+**Tests** : 12 tests, tous dans `tests/InvoiceCalculatorTest.php`
+
 ---
 
 ## Chemins critiques dans le code
 
 | Chemin | Critique pour | Localisation | Points d'attention |
 |---|---|---|---|
-| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:21-26` | Pas de validation de clés |
-| Sélection de taux | TTC au taux correct | `src/InvoiceCalculator.php:42` | Booléen unique, pas de taux mixte |
-| Arrondi final | Exactitude du TTC | `src/InvoiceCalculator.php:27,45` | `(int) round()` explicite |
-| Construction du logger | Journalisation | `src/AppLogger.php:17-18` | Instanciation directe Monolog |
-| API `addInfo`/`addError` | Événements enregistrés | `src/AppLogger.php:23,28` | Monolog 1.x seulement |
+| Calcul HT | Tous les calculs | `src/InvoiceCalculator.php:19-33` | ✅ Gardes combinées, validation clés + overflow |
+| Taux par ligne | Facturation mixte | `src/InvoiceCalculator.php:48` | ✅ Support des taux mixtes, repli 16 % par défaut |
+| Arrondi final | Exactitude TTC | `src/InvoiceCalculator.php:28,51` | ✅ VÉRIFIÉ_CODE: `(int) round()` sans argument de mode (lignes 28, 51) ; HYPOTHÈSE: applique `PHP_ROUND_HALF_UP` selon le comportement PHP 8.1+ — conformité TGC CFP à valider avec l'autorité fiscale ; accumulateur `totalTtc` utilise flottant `0.0` (ligne 43) |
+| Construction du logger | Journalisation | `src/AppLogger.php:17-18` | Instanciation directe Monolog, pas d'injection |
+| API `info()`/`error()` | Événements enregistrés | `src/AppLogger.php:23,28` | ✅ Monolog 3.x (migré depuis 1.x) |
 
 ---
 
@@ -326,69 +363,58 @@ Application hôte
    │
    ├─→ new InvoiceCalculator()
    │      │
-   │      └─→ initialise constantes TGC_STANDARD, TGC_REDUIT
+   │      └─→ initialise constantes TGC_STANDARD=0.16, TGC_REDUIT=0.05
    │
    ├─→ $calc->totalHorsTaxe($lignes)
    │      │
-   │      └─→ Σ(quantité × prixUnitaire)
-   │           └─→ retourne int
+   │      ├─→ valide clés quantite, prixUnitaire (InvalidArgumentException sinon)
+   │      │
+   │      ├─→ Σ(quantité × prixUnitaire)
+   │      │
+   │      ├─→ check overflow (OverflowException sinon)
+   │      │
+   │      └─→ retourne int (montant HT)
    │
-   ├─→ $calc->totalTtc($lignes, false)
+   ├─→ $calc->totalTtc($lignes)
    │      │
-   │      ├─→ appelle totalHorsTaxe($lignes) → HT
+   │      ├─→ valide clés quantite, prixUnitaire
    │      │
-   │      ├─→ sélectionne taux (TGC_STANDARD = 0.16)
+   │      ├─→ boucle sur lignes :
+   │      │   ├─→ taux = $ligne['taux'] ?? 0.16
+   │      │   └─→ accumule quantite × prixUnitaire × (1 + taux)
    │      │
-   │      └─→ (int) round(HT × 1.16) → retourne int
+   │      ├─→ arrondi : (int) round()
+   │      │
+   │      ├─→ check overflow
+   │      │
+   │      └─→ retourne int (montant TTC)
    │
    └─→ new AppLogger('facturation', 'php://stderr')
           │
           ├─→ new Logger('facturation')
           │
-          └─→ pushHandler(new StreamHandler('php://stderr'))
+          ├─→ pushHandler(new StreamHandler('php://stderr'))
+          │
+          ├─→ $logger->info('Facture émise', ['total_ttc' => ...])
+          │
+          └─→ $logger->error('Erreur de calcul', ['detail' => ...])
 ```
 
 ---
 
-## Absence notables
+## Zones à modifier avec prudence
 
-| Absence | Signification | Implication |
+| Zone | Raison | Impact si modifié |
 |---|---|---|
-| Pas de `composer.lock` | Builds non reproductibles | Deux `composer install` peuvent différer sur Monolog |
-| Pas de contrôleur | Pas d'HTTP | La bibliothèque n'est jamais appelée directement par un navigateur |
-| Pas d'ORM | Pas de persistance | Les factures existent en mémoire, ne sont jamais sauvegardées |
-| Pas d'intégration `InvoiceCalculator` + `AppLogger` | Orchestration en amont | L'application hôte doit lier les deux classes |
-| Pas de test `AppLogger` | `AppLogger` non validé | Régression Monolog ne serait détectée que en production |
-| Pas de test cas limites | Comportement non prouvé | Tableau vide, clé manquante, valeur négative : non testés |
-| Pas de `<coverage>` en PHPUnit | Couverture inconnue | La proportion de lignes testées n'est pas mesurée |
-
----
-
-## Langage d'implémentation
-
-**PHP 8.0+**
-
-**Paradigme** : procédural avec classes (pas de patterns avancés : pas d'interface, pas d'héritage, pas de traits)
-
-**Style de code** :
-- Pas de type hints sur les paramètres (PHP 7 style, compatible 8.0+)
-- Pas d'union types
-- Pas de named arguments
-- Pas de constructor promotion
-- Docblocks présents (pour l'IDE et la documentation)
-
----
-
-## Points de vigilance pour les évolutions futures
-
-1. **Montée de version Monolog** — si la contrainte `^1.25` est relâchée, vérifier que l'API reste compatible (`addInfo()`, `addError()`)
-2. **Taux mixte** — si le besoin émerge, refonte d'API requise (paramètre array de taux par ligne, ou appels multiples documentés)
-3. **Validation des lignes** — actuellement zéro validation ; si le besoin de robustesse augmente, ajouter des gardes
-4. **Composer.lock** — créer et versionner pour reproductibilité
-5. **Couverture de test** — activer `<coverage>` dans `phpunit.xml` et tester `AppLogger`
+| `TGC_STANDARD`, `TGC_REDUIT` | Source unique de vérité | Tous les calculs TTC changent |
+| Signature `totalTtc(array $lignes)` | Contrat public de l'API | Rupture compatibilité consommateurs |
+| Clé `taux` dans ligne | Support taux mixtes | Factures de consommateurs qui omettaient `taux` obtiendraient soudain 16 % au lieu d'une erreur |
+| `(int) round()` ligne 28,51 | Mode d'arrondi | Exactitude financière en cas limites |
+| Monolog 3.x API | Dépendance externe | Rupture si Monolog 4.x change l'API `info()`/`error()` |
 
 ---
 
 **Branche** : `main`  
-**SHA référence** : `5f5c8ee00765beb04be08b5bcb089066c36a0f30`  
-**Date de dernière vérification** : 2026-08-04
+**SHA référence** : `7470fd9` (corrections documentaires critiques)  
+**Date de dernière mise à jour** : 2026-08-09  
+**Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md
