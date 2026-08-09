@@ -78,14 +78,16 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 
 - Implémentation lue intégralement : deux fichiers source seuls, pas de code caché
 - Constantes TGC : `TGC_STANDARD = 0.16` et `TGC_REDUIT = 0.05` (confirmées ligne par ligne)
+- **PHP : 8.1** — `composer.json:7` déclare `>=8.1` ; README.md annonce incorrectement 8.0 (incohérence documentaire détectée)
 - **12 tests** valident les calculs nominaux, les taux mixtes, le taux par défaut, et les cas d'exception (`\InvalidArgumentException`, `\OverflowException`) — vérifiés en statique ; exécution runtime non observée
 - **Gardes ajoutées** : `\InvalidArgumentException` sur clé manquante, `\OverflowException` sur dépassement `PHP_INT_MAX` (depuis 2026-08-08)
 - **Taux par ligne** : limitation « taux unique » résolue — factures mixtes testées (test `testTotalTtcTauxMixte`, SHA 7ef6351)
-- **Monolog 3.x** : migration effectuée, `composer.json:8` déclare `^3.0`, API mises à jour (`info()` / `error()` appelées aux lignes 23, 28 de `src/AppLogger.php`) ; `composer.lock` présent et versionné, verrouille Monolog 3.10.0
+- **Monolog 3.10.0** : migration effectuée depuis 1.x (2026-08-08), `composer.json:8` déclare `^3.0`, API mises à jour (`info()` / `error()` appelées aux lignes 23, 28 de `src/AppLogger.php`) ; **`composer.lock` présent et versionné**, verrouille Monolog 3.10.0
+- **PHPUnit 10.5.64** : `composer.json:11` déclare `^10.5` ; `composer.lock` verrouille 10.5.64 ; **12 tests exécutables**, `AppLogger` non testé
 - Aucune couche HTTP/ORM/persistance : vérifié sur l'arbre complet du dépôt
-- Dépendances explicites et verrouillées : Monolog 3.10.0, PHPUnit 10.5.64 (depuis 2026-08-08) ; composer.lock présent et versionné
+- Dépendances explicites et reproductibles : Monolog 3.10.0, PHPUnit 10.5.64 verrouillés dans `composer.lock` (présent et versionné depuis 2026-08-08)
 
-**Confiance niveau** : **high** sur le code source, son implémentation, et la stabilité des dépendances (composer.lock versionné et verrouillant Monolog 3.10.0 et PHPUnit 10.5.64).
+**Confiance niveau** : **high** sur le code source, son implémentation, et la reproductibilité des dépendances (`composer.lock` présent et versionné, verrouille Monolog 3.10.0 et PHPUnit 10.5.64).
 
 ### Ce qu'on sait par hypothèse (`HYPOTHÈSE`)
 
@@ -109,8 +111,8 @@ Ces inconnues sont **des questions pour le board**, pas des défauts du livrable
 
 | Point | Gravité | Détail | État |
 |---|---|---|---|
-| **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | **Détecté en audit** — correction README hors scope du redacteur |
-| **Incohérence documentaire composer.lock** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent et suivi git (Monolog 3.10.0, PHPUnit 10.5.64) | **Détecté en audit** — correction README hors scope du redacteur |
+| **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | Incohérence détectée dans README.md ; vérité : PHP 8.1 |
+| **`composer.lock` versionné** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent et suivi git | **Arbitrage** : `composer.lock` EST présent et versionné, verrouille Monolog 3.10.0 et PHPUnit 10.5.64 ; ceci garantit builds reproductibles |
 | **`AppLogger` non testé** | Moyen | Aucun test pour cette classe — régression Monolog 3.x non interceptée | À adresser : ajouter tests `AppLoggerTest.php` |
 | **Taux par défaut silencieux** | Moyen | Absent de `taux`, replie sur `TGC_STANDARD` (16 %) sans signal — risque facturation 16 % au lieu de 5 % | À documenter : ajouter exemple dans README.md |
 | **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `taux > 1.0` sans erreur | À clarifier : documenter le contrat ou ajouter validation |
