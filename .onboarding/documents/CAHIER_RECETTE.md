@@ -431,7 +431,7 @@ Bloc A (Nominaux)  : 5 tests — assertions statiquement correctes, exécution r
 Bloc B (Exceptions): 7 tests — assertions statiquement correctes, exécution runtime ATTENTE
 Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation ATTENTE en runtime
 ────────────────────────────────────────────────────────────────
-Total: 12 tests (structure prouvée statiquement, exécution confirmée par runtime) + infrastructure
+Total: 12 tests (structure prouvée statiquement, exécution runtime à confirmer) + infrastructure
 Statut: VÉRIFIÉ_CODE en statique ; verdict ATTENTE en runtime selon `composer test`
 ```
 
