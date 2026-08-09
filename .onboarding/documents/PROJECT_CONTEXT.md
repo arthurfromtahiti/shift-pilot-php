@@ -140,6 +140,6 @@ Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences docume
 ---
 
 **Branche** : `main`  
-**SHA référence** : (sera mis à jour après commit)  
-**Date de dernière mise à jour** : 2026-08-08  
+**SHA référence** : `7470fd9` (corrections documentaires critiques)  
+**Date de dernière mise à jour** : 2026-08-09  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

@@ -459,7 +459,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : (sera mis à jour après commit)  
-**Date de dernière mise à jour** : 2026-08-08  
+**SHA référence** : `7470fd9` (corrections documentaires critiques)  
+**Date de dernière mise à jour** : 2026-08-09  
 **Audits de référence** : TESTING_AUDIT.md  
 **Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)
