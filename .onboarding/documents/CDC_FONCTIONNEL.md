@@ -39,9 +39,9 @@ Le dépôt porte la qualification « pilote de test » : il implémente le **sou
 - Retourne 0 F CFP si la liste de lignes est vide (comportement non documenté comme erreur)
 - Ne valide pas la plage du taux (accepte `taux < 0` ou `taux > 1.0` sans erreur)
 
-**Gardes d'entrée ajoutées (2026-08-08)** :
-- `\InvalidArgumentException` si la clé `quantite` ou `prixUnitaire` est absente d'une ligne (`src/InvoiceCalculator.php:23-25`, `45-47`)
-- `\OverflowException` si le total HT ou TTC dépasse `PHP_INT_MAX` (`src/InvoiceCalculator.php:29-31`, `52-54`)
+**Gardes d'entrée implémentées (2026-08-08)** :
+- `\InvalidArgumentException` si la clé `quantite` ou `prixUnitaire` est absente d'une ligne (code : `src/InvoiceCalculator.php:23-25`, `45-47` ; tests présents, exécution À OBSERVER)
+- `\OverflowException` si le total HT ou TTC dépasse `PHP_INT_MAX` (code : `src/InvoiceCalculator.php:29-31`, `52-54` ; tests présents, exécution À OBSERVER)
 
 ### Acteur système : `App\AppLogger`
 
@@ -277,9 +277,9 @@ Ces constantes sont l'**unique point source de vérité** pour les deux taux uti
 
 **Conséquence** : une ligne mal formée provoque un arrêt explicite avec un message d'erreur clair.
 
-**Preuve** : `src/InvoiceCalculator.php:23-25,45-47` ; tests `tests/InvoiceCalculatorTest.php:54-87` couvrent ces cas
+**Preuve statique** : `src/InvoiceCalculator.php:23-25,45-47` ; tests `tests/InvoiceCalculatorTest.php:54-87` existent et contiennent les assertions
 
-**État** : `VÉRIFIÉ_CODE` — ce comportement est garanti et testé.
+**État** : `VÉRIFIÉ_CODE` — ce comportement est implémenté dans le code et couvert par des tests présents ; exécution runtime À OBSERVER via `composer test`.
 
 ### Valeur négative (quantité ou prix)
 
@@ -303,7 +303,7 @@ Un appel à une fonction de la bibliothèque est **fonctionnellement correct** s
 
 1. **Calcul HT** : `totalHorsTaxe(...)` retourne la somme exacte de tous les produits `quantite × prixUnitaire`
 2. **Calcul TTC** : `totalTtc(...)` retourne `(int) round( Σ(quantite × prixUnitaire × (1 + taux_par_ligne)) )` où chaque ligne peut spécifier son propre taux ou replie sur `TGC_STANDARD`
-3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` lèvent `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent, `\OverflowException` si le résultat dépasse `PHP_INT_MAX`
+3. **Validation d'entrée** : `totalHorsTaxe` et `totalTtc` contiennent le code pour lever `\InvalidArgumentException` si `quantite` ou `prixUnitaire` est absent, `\OverflowException` si le résultat dépasse `PHP_INT_MAX` (preuves statiques présentes, exécution À OBSERVER)
 4. **Structure de ligne** : clé `label` optionnelle et ignorée par le calcul ; clé `taux` optionnelle pour chaque ligne, repli sur `TGC_STANDARD` si absente
 5. **Taux mixte** : une facture avec des lignes à taux différents (16 % et 5 %) peut être calculée en un seul appel avec accumulation sans arrondi intermédiaire
 6. **Journalisation — portée du code** : `factureEmise(int $totalTTC): void` et `erreurCalcul(string $message): void` existent et exécutent l'appel à `$this->logger->info()` / `error()` sans lever d'exception au niveau `src/AppLogger.php` (vérifié statiquement ; exécution runtime non observée)
