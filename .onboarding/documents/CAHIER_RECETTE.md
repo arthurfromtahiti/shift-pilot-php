@@ -24,7 +24,7 @@ Ce cahier définit les **critères de recette** permettant de valider que la bib
 ### Artefacts à tester
 
 - Dernière version du dépôt sur `origin/main` (branche par défaut)
-- SHA cible : `10d96b9` (HEAD courant)
+- SHA cible : celui-ci sera spécifié après commit des corrections
 - Aucune modification locale du code source (`src/`, `tests/`)
 
 ### Données de test
@@ -434,7 +434,7 @@ Bloc B (Exceptions): 7 tests — assertions correctes, exécution À_OBSERVER en
 Bloc C (Infrastructure) : 3 checks — API utilisées correctement, installation À_OBSERVER en runtime
 ────────────────────────────────────────────────────────────────
 Total: 12 tests (structure prouvée, exécution non observée) + infrastructure
-Statut: VÉRIFIÉ_CODE en statique ; PASS/FAIL en runtime selon `composer test`
+Statut: VÉRIFIÉ_CODE en statique ; verdict À_OBSERVER en runtime selon `composer test`
 ```
 
 **Important** : Ce cahier valide que les tests **existent** et que leurs assertions sont **arithmétiquement correctes**. Il ne remplace pas l'exécution réelle de `composer test`, qui est l'unique preuve de fonctionnement en runtime.
@@ -459,7 +459,7 @@ _Espace libre pour documenter les résultats détaillés ou les actions futures_
 ---
 
 **Branche** : `main`  
-**SHA référence** : `10d96b9` (HEAD courant)  
+**SHA référence** : (sera mis à jour après commit)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : TESTING_AUDIT.md  
 **Tests source** : `tests/InvoiceCalculatorTest.php` (12 tests)

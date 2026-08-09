@@ -78,14 +78,14 @@ Ces limitations ne sont **pas des défauts** pour un pilote : elles sont appropr
 
 - Implémentation lue intégralement : deux fichiers source seuls, pas de code caché
 - Constantes TGC : `TGC_STANDARD = 0.16` et `TGC_REDUIT = 0.05` (confirmées ligne par ligne)
-- **12 tests** valident les calculs nominaux, les taux mixtes, le taux par défaut, et les cas d'exception (`\InvalidArgumentException`, `\OverflowException`)
+- **12 tests** valident les calculs nominaux, les taux mixtes, le taux par défaut, et les cas d'exception (`\InvalidArgumentException`, `\OverflowException`) — vérifiés en statique ; exécution runtime non observée
 - **Gardes ajoutées** : `\InvalidArgumentException` sur clé manquante, `\OverflowException` sur dépassement `PHP_INT_MAX` (depuis 2026-08-08)
 - **Taux par ligne** : limitation « taux unique » résolue — factures mixtes testées (test `testTotalTtcTauxMixte`, SHA 7ef6351)
-- **Monolog 3.x** : migration effectuée, `composer.json:8` déclare `^3.0`, API mises à jour (`info()` / `error()`), `composer.lock` versionné et verrouille `3.10.0`
+- **Monolog 3.x** : migration effectuée, `composer.json:8` déclare `^3.0`, API mises à jour (`info()` / `error()` appelées aux lignes 23, 28 de `src/AppLogger.php`) ; `composer.lock` présent et versionné, verrouille Monolog 3.10.0
 - Aucune couche HTTP/ORM/persistance : vérifié sur l'arbre complet du dépôt
-- Dépendances explicites et verrouillées : Monolog 3.10.0, PHPUnit 10.5 (depuis 2026-08-08) ; composer.lock présent et versionné
+- Dépendances explicites et verrouillées : Monolog 3.10.0, PHPUnit 10.5.64 (depuis 2026-08-08) ; composer.lock présent et versionné
 
-**Confiance niveau** : **high** sur le code source, son implémentation, et la stabilité des dépendances (composer.lock versionné et verrouillant Monolog 3.10.0).
+**Confiance niveau** : **high** sur le code source, son implémentation, et la stabilité des dépendances (composer.lock versionné et verrouillant Monolog 3.10.0 et PHPUnit 10.5.64).
 
 ### Ce qu'on sait par hypothèse (`HYPOTHÈSE`)
 
@@ -109,15 +109,15 @@ Ces inconnues sont **des questions pour le board**, pas des défauts du livrable
 
 | Point | Gravité | Détail | État |
 |---|---|---|---|
-| **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | **À CORRIGER** : align README avec composer.json (8.1) |
-| **Incohérence documentaire composer.lock** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent et suivi git (Monolog 3.10.0) | **À CORRIGER** : mettre à jour README.md pour qualifier que composer.lock est versionné |
+| **Incohérence PHP 8.0 vs 8.1** | Moyen | `README.md:7` dit `>= 8.0` mais `composer.json:7` requiert `>=8.1` | **Détecté en audit** — correction README hors scope du redacteur |
+| **Incohérence documentaire composer.lock** | Moyen | `README.md:13` dit « non versionné » mais `composer.lock` est présent et suivi git (Monolog 3.10.0, PHPUnit 10.5.64) | **Détecté en audit** — correction README hors scope du redacteur |
 | **`AppLogger` non testé** | Moyen | Aucun test pour cette classe — régression Monolog 3.x non interceptée | À adresser : ajouter tests `AppLoggerTest.php` |
 | **Taux par défaut silencieux** | Moyen | Absent de `taux`, replie sur `TGC_STANDARD` (16 %) sans signal — risque facturation 16 % au lieu de 5 % | À documenter : ajouter exemple dans README.md |
 | **Taux sans validation de plage** | Faible | Accepte `taux < 0` ou `taux > 1.0` sans erreur | À clarifier : documenter le contrat ou ajouter validation |
 | **Pas de validation de facture vide** | Faible | `totalTtc([])` retourne `0 F CFP` sans signal d'erreur | À clarifier : est-ce volontaire ou erreur à rejeter ? |
 | **Absence d'interface sur `AppLogger`** | Faible | Logger instancié directement — impossible de substituer pour tests ou autre handler | Architecture : acceptable pour pilote, à refactorer pour production |
 
-Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences documentaires et le manque de tests `AppLogger` sont les plus impactantes.
+Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences documentaires README.md (détectées) et le manque de tests `AppLogger` sont les plus impactantes pour la maintenabilité future.
 
 ## Charge de travail et ressources
 
@@ -140,6 +140,6 @@ Aucune de ces fragilités ne rend le pilote inopérant. Les incohérences docume
 ---
 
 **Branche** : `main`  
-**SHA référence** : `10d96b9` (HEAD courant)  
+**SHA référence** : (sera mis à jour après commit)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

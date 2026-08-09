@@ -216,13 +216,14 @@ $totalTTC = $calc->totalTtc($lignes);  // → 11600 F CFP
 - **Implémentation** : `src/AppLogger.php:23,28` effectue des appels directs à `$this->logger->info()` / `error()` avec le contexte fourni (clé `total_ttc` pour émission, clé `detail` pour erreur)
 - **API** : utilise Monolog 3.x (méthodes `info()` et `error()` modernes)
 - **Portée observée au niveau du code** : 
-  - ✅ `AppLogger` appelle `$this->logger->info()` / `error()` sans levée d'exception au moment du code `src/AppLogger.php:23,28`
+  - ✅ `AppLogger` appelle `$this->logger->info()` / `error()` aux lignes `src/AppLogger.php:23,28` — présence confirmée en lecture statique
 - **Portée non garantie — dépend de la configuration Monolog externe** : 
   - L'écriture effective des logs vers une destination (fichier, syslog, API) dépend de la configuration des handlers Monolog côté application hôte
   - Le formatage et la sérialisation des messages relèvent de la configuration Monolog, non observés dans ce dépôt
   - L'absence d'erreur lors de l'appel à `info()` / `error()` ne garantit pas que le message sera effectivement écrit ou persisté
   - Le comportement du handler (errors lors de l'écriture, gestion des permissions, formatage) relève entièrement de Monolog et de sa configuration externe
-- **Preuve** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`) ; absence de test pour `AppLogger` dans ce dépôt ; pas d'observation d'exécution runtime
+- **Preuve statique** : `src/AppLogger.php:15-18` (constructeur configurable, défaut canal `facturation` et flux `php://stderr`) ; `src/AppLogger.php:23,28` (appels aux méthodes Monolog)
+- **Limitation observation** : aucun test pour `AppLogger` dans ce dépôt ; pas d'exécution runtime observée
 - **Impact dev** : le résultat final (présence du log en sortie, son format, sa destination) relève de la configuration Monolog côté application hôte ; `AppLogger` n'en contrôle que la transmission jusqu'à Monolog
 
 ## Données
@@ -320,12 +321,12 @@ La bibliothèque **ne garantit pas** :
 
 **Concernant Monolog** :
 - L'écriture effective des logs sur stderr, fichier, ou autre destination dépend entièrement de la configuration des handlers Monolog côté application hôte (formatage, sérialisation, persistance, destination, gestion d'erreurs)
-- `AppLogger` le code appelle `$this->logger->info()` / `error()` au niveau `src/AppLogger.php:23,28` sans lever d'exception au niveau du code de cette classe ; l'exécution réelle et la gestion d'erreurs du handler Monolog relèvent de la configuration externe
+- `AppLogger` : le code source appelle `$this->logger->info()` / `error()` aux lignes `src/AppLogger.php:23,28` (observation statique) ; l'exécution réelle et la gestion d'erreurs du handler Monolog relèvent de la configuration externe et ne sont pas observées dans ce dépôt
 - Les évolutions futures de Monolog (changements d'API, retrait de méthodes) relèvent de la gestion de dépendances Composer et ne sont pas garanties par cette bibliothèque
 
 ---
 
 **Branche** : `main`  
-**SHA référence** : `10d96b9` (HEAD courant)  
+**SHA référence** : (sera mis à jour après commit)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md

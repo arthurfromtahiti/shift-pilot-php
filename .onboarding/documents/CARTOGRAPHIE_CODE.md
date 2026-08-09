@@ -15,9 +15,9 @@ src/
 ```
 .
 ├── composer.json          [19 lignes]   Déclaration des dépendances (Monolog 3.x, PHPUnit 10.5)
-├── composer.lock          [568 lignes]  ✅ Présent et versionné depuis 2026-08-08 (Monolog 3.10.0)
+├── composer.lock          [568 lignes]  ✅ Présent et versionné depuis 2026-08-08 (Monolog 3.10.0, PHPUnit 10.5.64)
 ├── phpunit.xml            [13 lignes]   Configuration PHPUnit (pas de collecte de couverture)
-└── README.md              [13 lignes]   Présentation du pilote (incohérences détectées)
+└── README.md              [13 lignes]   Présentation du pilote (incohérences détectées : PHP 8.0/8.1, composer.lock)
 ```
 
 ### Fichiers de test
@@ -421,6 +421,6 @@ Application hôte
 ---
 
 **Branche** : `main`  
-**SHA référence** : `10d96b9` (HEAD courant)  
+**SHA référence** : (sera mis à jour après commit)  
 **Date de dernière mise à jour** : 2026-08-08  
 **Audits de référence** : ARCHITECTURE_AUDIT.md, FUNCTIONAL_AUDIT.md, CODE_HOTSPOTS_AUDIT.md, DATA_MODEL_AUDIT.md, SECURITY_ROBUSTNESS_AUDIT.md, TESTING_AUDIT.md
